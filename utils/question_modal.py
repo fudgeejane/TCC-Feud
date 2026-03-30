@@ -1,7 +1,8 @@
 from typing import Callable, Optional
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QTextEdit,
-    QPushButton, QHBoxLayout, QWidget, QGraphicsDropShadowEffect
+    QPushButton, QHBoxLayout, QWidget, QSizePolicy,
+    QGraphicsDropShadowEffect
 )
 from PySide6.QtCore import Qt
 
@@ -211,6 +212,7 @@ def open_confirm_modal(parent, title: str, message: str,
         border-radius:14px;
         padding:14px;
     """)
+    panel.setMinimumWidth(460)
     panel_layout = QVBoxLayout(panel)
     panel_layout.setSpacing(10)
 
@@ -226,6 +228,8 @@ def open_confirm_modal(parent, title: str, message: str,
 
     lbl = QLabel(message)
     lbl.setWordWrap(True)
+    lbl.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+    lbl.setMinimumWidth(380)
     lbl.setStyleSheet("color:#cbd5f5; font-size:10.5pt;")
     panel_layout.addWidget(lbl)
 
@@ -275,9 +279,8 @@ def open_confirm_modal(parent, title: str, message: str,
     yes.clicked.connect(dlg.accept)
     no.clicked.connect(dlg.reject)
 
-    dlg.setFixedWidth(360)
+    dlg.setMinimumWidth(420)
     dlg.adjustSize()
-    dlg.setFixedSize(dlg.size())
 
     try:
         center = parent.mapToGlobal(parent.rect().center())

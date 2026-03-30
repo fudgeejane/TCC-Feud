@@ -5,6 +5,7 @@
     "questions": [
       {
         "question": "Magbigay ng bagay na laging dala ng ComSci student",
+        "fast_money": false,
         "answers": [
           {
             "text": "Laptop",

@@ -232,9 +232,8 @@ def open_question_modal(parent, on_create: Optional[Callable[[dict], None]] = No
     dlg.mouseMoveEvent = _mouseMoveEvent
 
     # 📏 Size
-    dlg.setFixedWidth(380)
+    dlg.setMinimumWidth(420)
     dlg.adjustSize()
-    dlg.setFixedSize(dlg.size())
 
     q_entry.setFocus()
     dlg.exec()
@@ -332,9 +331,8 @@ def open_game_modal(parent, on_create: Optional[Callable[[dict], None]] = None):
     dlg.mousePressEvent = _mousePressEvent
     dlg.mouseMoveEvent = _mouseMoveEvent
 
-    dlg.setFixedWidth(420)
+    dlg.setMinimumWidth(460)
     dlg.adjustSize()
-    dlg.setFixedSize(dlg.size())
 
     title_entry.setFocus()
     dlg.exec()
@@ -404,9 +402,8 @@ def open_edit_modal(parent, title: str, description: str, on_save: Optional[Call
     save_btn.clicked.connect(on_save_click)
     cancel_btn.clicked.connect(dlg.reject)
 
-    dlg.setFixedWidth(420)
+    dlg.setMinimumWidth(460)
     dlg.adjustSize()
-    dlg.setFixedSize(dlg.size())
     dlg.exec()
 
 
@@ -423,6 +420,7 @@ def open_delete_confirm(parent, on_confirm: Optional[Callable[[], None]] = None)
     layout.setContentsMargins(16, 12, 16, 12)
     msg = QLabel("Are you sure you want to delete this game?")
     msg.setAlignment(Qt.AlignCenter)
+    msg.setWordWrap(True)
     msg.setStyleSheet("color: #e6eef8; font-weight:600; padding:6px 12px;")
     layout.addWidget(msg)
 
@@ -448,7 +446,6 @@ def open_delete_confirm(parent, on_confirm: Optional[Callable[[], None]] = None)
     del_btn.clicked.connect(_on_del)
     cancel_btn.clicked.connect(dlg.reject)
 
-    dlg.setFixedWidth(360)
+    dlg.setMinimumWidth(380)
     dlg.adjustSize()
-    dlg.setFixedSize(dlg.size())
     dlg.exec()

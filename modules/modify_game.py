@@ -37,7 +37,14 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     page = QWidget()
     # page background to match app theme
     try:
-        page.setStyleSheet("background: #071437;")
+        page.setStyleSheet("""
+            QWidget {
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                    stop:0 #06112D, stop:0.45 #081B3F, stop:1 #061127);
+                color: #E2E8F0;
+                font-family: Segoe UI, Arial, sans-serif;
+            }
+        """)
     except Exception:
         pass
     page_layout = QVBoxLayout(page)
@@ -46,8 +53,15 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
 
     # Header: logo at top-left
     header = QWidget()
+    header.setStyleSheet("""
+        QWidget {
+            background: rgba(15, 23, 54, 0.92);
+            border: 1px solid rgba(96,165,250,0.18);
+            border-radius: 24px;
+        }
+    """)
     h_layout = QHBoxLayout(header)
-    h_layout.setContentsMargins(0, 0, 0, 0)
+    h_layout.setContentsMargins(24, 18, 24, 18)
     logo_lbl = QLabel()
     try:
         from pathlib import Path
@@ -75,12 +89,40 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
 
     # Header action buttons: Back to Board and Play Game
     back_board = QPushButton("Back to Board")
-    back_board.setStyleSheet("background:#0a84ff; color:white; border-radius:16px; padding:8px 14px;")
+    back_board.setStyleSheet("""
+        QPushButton {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #2563EB, stop:1 #3B82F6);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 10px 18px;
+            font-weight: 700;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #3B82F6, stop:1 #60A5FA);
+        }
+    """)
     back_board.setCursor(Qt.PointingHandCursor)
     back_board.clicked.connect(app.show_home)
 
     play_btn = QPushButton("Play Game")
-    play_btn.setStyleSheet("background:#16a34a; color:white; border-radius:16px; padding:8px 14px;")
+    play_btn.setStyleSheet("""
+        QPushButton {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #22C55E, stop:1 #10B981);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            padding: 10px 18px;
+            font-weight: 700;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #34D399, stop:1 #6EE7B7);
+        }
+    """)
     play_btn.setCursor(Qt.PointingHandCursor)
 
     def _on_play(t=title, d=description):
@@ -121,11 +163,30 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         db = None
 
     toolbar = QWidget()
+    toolbar.setStyleSheet("""
+        QWidget {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(96,165,250,0.14);
+            border-radius: 18px;
+        }
+    """)
     tb_layout = QHBoxLayout(toolbar)
-    tb_layout.setContentsMargins(0, 0, 0, 0)
+    tb_layout.setContentsMargins(18, 12, 18, 12)
     tb_layout.addStretch()
     add_question_btn = QPushButton("Add Question")
-    add_question_btn.setStyleSheet("background:#0a84ff; color:white; border-radius:8px; padding:8px 12px;")
+    add_question_btn.setStyleSheet("""
+        QPushButton {
+            background: #2563EB;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 10px 18px;
+            font-weight: 700;
+        }
+        QPushButton:hover {
+            background: #3B82F6;
+        }
+    """)
     add_question_btn.setCursor(Qt.PointingHandCursor)
     tb_layout.addWidget(add_question_btn, alignment=Qt.AlignRight)
     page_layout.addWidget(toolbar)
@@ -179,9 +240,16 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         except Exception:
             pass
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(12, 12, 12, 12)
-        card_layout.setSpacing(8)
-        card.setStyleSheet("background:#ffffff; border-radius:8px;")
+        card_layout.setContentsMargins(18, 18, 18, 18)
+        card_layout.setSpacing(14)
+        card.setStyleSheet("""
+            QWidget#question_card {
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                    stop:0 #08142d, stop:1 #0f2150);
+                border: 1px solid rgba(96,165,250,0.16);
+                border-radius: 20px;
+            }
+        """)
 
         # Top row: title, fast-money toggle, reset, delete
         top = QWidget()
@@ -189,12 +257,33 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         top_l.setContentsMargins(0, 0, 0, 0)
         title_lbl = QLabel("Question")
         title_lbl.setObjectName("_q_title")
-        title_lbl.setStyleSheet("font-weight:700; color:#111827;")
+        title_lbl.setStyleSheet("""
+            color: #F8FAFC;
+            font-weight: 800;
+            font-size: 14pt;
+        """)
         top_l.addWidget(title_lbl)
         top_l.addStretch()
 
         fast_cb = QCheckBox("Fast Money")
         fast_cb.setCursor(Qt.PointingHandCursor)
+        fast_cb.setStyleSheet("""
+            QCheckBox {
+                color: #bfdbfe;
+                font-size: 11pt;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border: 1px solid rgba(255,255,255,0.24);
+                border-radius: 4px;
+                background: rgba(255,255,255,0.08);
+            }
+            QCheckBox::indicator:checked {
+                background: #22c55e;
+                border: 1px solid #22c55e;
+            }
+        """)
         top_l.addWidget(fast_cb)
 
         reset_btn = QPushButton("Reset")
@@ -212,7 +301,21 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         # Question input
         q_input = QLineEdit()
         q_input.setPlaceholderText("Enter question text...")
-        q_input.setMinimumHeight(32)
+        q_input.setMinimumHeight(54)
+        q_input.setStyleSheet("""
+            QLineEdit {
+                background: rgba(255,255,255,0.08);
+                border: 1px solid rgba(255,255,255,0.14);
+                border-radius: 14px;
+                padding: 14px 16px;
+                color: #E2E8F0;
+                font-size: 12pt;
+            }
+            QLineEdit:focus {
+                border: 1px solid #60A5FA;
+                background: rgba(255,255,255,0.10);
+            }
+        """)
         card_layout.addWidget(q_input)
 
         # Answers: two columns, four answers each (1-4 left, 5-8 right)
@@ -237,21 +340,34 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
             r_layout.setSpacing(8)
             ans_input = QLineEdit()
             ans_input.setPlaceholderText(f"Answer {a_i+1}")
-            ans_input.setMinimumHeight(32)
+            ans_input.setMinimumHeight(48)
             ans_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            ans_input.setStyleSheet("background:#fbfdff; border:1px solid #e6eef6; border-radius:6px; padding:8px;")
+            ans_input.setStyleSheet("""
+                QLineEdit {
+                    background: rgba(255,255,255,0.08);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 10px;
+                    padding: 13px 14px;
+                    color: #E2E8F0;
+                    font-size: 11pt;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #60A5FA;
+                    background: rgba(255,255,255,0.12);
+                }
+            """)
             score_input = QSpinBox()
             score_input.setRange(0, 1000000)
             score_input.setFixedWidth(92)
-            score_input.setMinimumHeight(32)
+            score_input.setMinimumHeight(36)
             score_input.setStyleSheet(
-                "background: #ffffff;"
-                "color: #0b1220;"
-                "border: 1px solid #94a3b8;"
-                "border-radius: 6px;"
-                "padding: 4px;"
+                "background: rgba(255,255,255,0.08);"
+                "color: #E2E8F0;"
+                "border: 1px solid rgba(255,255,255,0.18);"
+                "border-radius: 10px;"
+                "padding: 6px;"
                 "font-size: 11pt;"
-                "font-weight: 600;"
+                "font-weight: 700;"
             )
             score_input.setAlignment(Qt.AlignCenter)
             score_input.setToolTip("Points awarded for this answer")
@@ -277,21 +393,34 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
             r_layout.setSpacing(8)
             ans_input = QLineEdit()
             ans_input.setPlaceholderText(f"Answer {a_i+1}")
-            ans_input.setMinimumHeight(32)
+            ans_input.setMinimumHeight(48)
             ans_input.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            ans_input.setStyleSheet("background:#fbfdff; border:1px solid #e6eef6; border-radius:6px; padding:8px;")
+            ans_input.setStyleSheet("""
+                QLineEdit {
+                    background: rgba(255,255,255,0.08);
+                    border: 1px solid rgba(255,255,255,0.18);
+                    border-radius: 10px;
+                    padding: 13px 14px;
+                    color: #E2E8F0;
+                    font-size: 11pt;
+                }
+                QLineEdit:focus {
+                    border: 1px solid #60A5FA;
+                    background: rgba(255,255,255,0.12);
+                }
+            """)
             score_input = QSpinBox()
             score_input.setRange(0, 1000000)
             score_input.setFixedWidth(92)
-            score_input.setMinimumHeight(32)
+            score_input.setMinimumHeight(36)
             score_input.setStyleSheet(
-                "background: #ffffff;"
-                "color: #0b1220;"
-                "border: 1px solid #94a3b8;"
-                "border-radius: 6px;"
-                "padding: 4px;"
+                "background: rgba(255,255,255,0.08);"
+                "color: #E2E8F0;"
+                "border: 1px solid rgba(255,255,255,0.18);"
+                "border-radius: 10px;"
+                "padding: 6px;"
                 "font-size: 11pt;"
-                "font-weight: 600;"
+                "font-weight: 700;"
             )
             score_input.setAlignment(Qt.AlignCenter)
             score_input.setToolTip("Points awarded for this answer")
@@ -317,11 +446,31 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         total_l.addStretch()  # pushes everything to the right
 
         total_label = QLabel("Total: 0 pts")
-        total_label.setStyleSheet("font-weight:700; color:#0b1220;")
+        total_label.setStyleSheet("""
+            color: #E2E8F0;
+            font-weight: 700;
+            font-size: 12pt;
+        """)
 
         save_btn = QPushButton("Save")
         save_btn.setCursor(Qt.PointingHandCursor)
-        save_btn.setStyleSheet("background:#00d627; font-size:12px; color:white; border-radius:8px; padding:6px 18px; margin-left:12px;")
+        save_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                    stop:0 #22C55E, stop:1 #10B981);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 10px 20px;
+                font-size: 12pt;
+                font-weight: 700;
+                margin-left: 14px;
+            }
+            QPushButton:disabled {
+                background: rgba(255,255,255,0.12);
+                color: rgba(255,255,255,0.65);
+            }
+        """)
 
         total_l.addWidget(total_label)
         total_l.addWidget(save_btn)
@@ -364,6 +513,7 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         if initial:
             try:
                 q_input.setText(initial.get("question", ""))
+                fast_cb.setChecked(bool(initial.get("fast_money", False)))
                 ans_list = initial.get("answers", [])
                 # fill answers and scores in order
                 for i, line in enumerate(answer_inputs):
@@ -420,6 +570,7 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
                     })
             payload = {
                 "question": qtext,
+                "fast_money": bool(fast_cb.isChecked()),
                 "answers": answers,
                 "total": sum(a["score"] for a in answers),
                 "game_id": getattr(app, "current_game_id", None),
@@ -560,6 +711,7 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
                 except Exception:
                     pass
 
+        fast_cb.stateChanged.connect(lambda *_: mark_unsaved())
         reset_btn.clicked.connect(_reset_card)
 
         # Delete behavior

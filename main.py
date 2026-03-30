@@ -180,6 +180,8 @@ class TCCFeudApp(QMainWindow):
         btn.clicked.connect(lambda: (dlg.accept(), on_close() if on_close else None))
         btn.setCursor(Qt.PointingHandCursor)
         dlg_layout.addWidget(btn, alignment=Qt.AlignCenter)
+        dlg.setMinimumWidth(420)
+        dlg.adjustSize()
         dlg.exec()
 
 

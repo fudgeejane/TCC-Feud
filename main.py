@@ -1,4 +1,3 @@
-from importlib import import_module
 import sys
 
 from PySide6.QtWidgets import (
@@ -15,6 +14,16 @@ from PySide6.QtWidgets import (
     QDialog,
 )
 from PySide6.QtCore import Qt, Slot
+
+try:
+    import modules.home as home_module
+except Exception:
+    home_module = None
+
+try:
+    import utils.game_modal as game_modal
+except Exception:
+    game_modal = None
 
 # Button styles
 APP_STYLE = """
@@ -47,14 +56,14 @@ class TCCFeudApp(QMainWindow):
         self.stack.addWidget(self.home_widget)
         self.stack.addWidget(self.game_widget)
 
-        # Try to delegate home building to modules.home.build_home
+        # Delegate home building to modules.home.build_home when available.
         try:
-            mod = import_module("modules.home")
-            if hasattr(mod, "build_home"):
-                mod.build_home(self.home_widget, self)
+            if home_module and hasattr(home_module, "build_home"):
+                home_module.build_home(self.home_widget, self)
             else:
                 self._default_build_home()
-        except Exception:
+        except Exception as exc:
+            print(f"Failed to load modules.home.build_home: {exc}")
             self._default_build_home()
 
         self._build_game()
@@ -63,8 +72,11 @@ class TCCFeudApp(QMainWindow):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
-            QApplication.quit()
+            # Keep app open on Escape; allow closing via window controls (e.g., Alt+F4).
+            event.ignore()
+            return
         # Removed F11 fullscreen toggle to keep fixed non-resizable window
+        super().keyPressEvent(event)
 
     def _default_build_home(self):
         f = self.home_widget
@@ -101,18 +113,17 @@ class TCCFeudApp(QMainWindow):
         create_btn.setCursor(Qt.PointingHandCursor)
         layout.addWidget(create_btn)
 
-        # Try to wire Create Game button if utils.game_modal exists
+        # Wire Create Game button if utils.game_modal is available.
         try:
-            gm = import_module("utils.game_modal")
-
             def on_game_created(payload):
                 self.show_static_modal("Game Created", payload.get("title", "(no title)"))
 
             gbtn = QPushButton("Create Game")
             gbtn.setStyleSheet(SUCCESS_BTN)
-            gbtn.clicked.connect(lambda: gm.open_game_modal(self, on_create=on_game_created))
+            gbtn.clicked.connect(lambda: game_modal.open_game_modal(self, on_create=on_game_created))
             gbtn.setCursor(Qt.PointingHandCursor)
-            layout.addWidget(gbtn)
+            if game_modal:
+                layout.addWidget(gbtn)
         except Exception:
             pass
 
@@ -162,7 +173,7 @@ class TCCFeudApp(QMainWindow):
         def after():
             self.show_game(title, description)
 
-        self.show_static_modal("Creating game...", "Your game is being created. This is a static modal display.", after)
+        self.show_static_modal("Creating game...", "Your game is being created.", after)
 
     def show_static_modal(self, header: str, body: str, on_close=None):
         dlg = QDialog(self)
@@ -172,7 +183,7 @@ class TCCFeudApp(QMainWindow):
         lbl = QLabel(body)
         lbl.setWordWrap(True)
         dlg_layout.addWidget(lbl)
-        placeholder = QLabel("[static display]")
+        placeholder = QLabel("Game setup in progress")
         placeholder.setStyleSheet("background:#f3f4f6; color:#374151; padding:20px; border-radius:6px;")
         dlg_layout.addWidget(placeholder, alignment=Qt.AlignCenter)
         btn = QPushButton("OK")

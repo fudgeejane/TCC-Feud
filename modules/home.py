@@ -11,7 +11,16 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QPixmap, QColor
 from pathlib import Path
-import importlib
+
+try:
+    import utils.game_modal as game_modal
+except Exception:
+    game_modal = None
+
+try:
+    import modules.modify_game as modify_game
+except Exception:
+    modify_game = None
 
 # optional DB persistence
 try:
@@ -102,12 +111,6 @@ def build_home(parent: QWidget, app):
     """)
     header_layout.addWidget(subtitle, alignment=Qt.AlignVCenter)
 
-    # Try import game modal for edit/delete/create functionality
-    try:
-        qm = importlib.import_module("utils.game_modal")
-    except Exception:
-        qm = None
-
     def on_game_created(payload):
         try:
             if not hasattr(app, "games"):
@@ -158,8 +161,8 @@ def build_home(parent: QWidget, app):
         }
     """)
     try:
-        if qm:
-            create_btn.clicked.connect(lambda: qm.open_game_modal(app, on_create=on_game_created))
+        if game_modal:
+            create_btn.clicked.connect(lambda: game_modal.open_game_modal(app, on_create=on_game_created))
     except Exception:
         pass
 
@@ -438,8 +441,7 @@ def build_home(parent: QWidget, app):
 
             def on_edit_triggered(checked=False, i=idx):
                 try:
-                    modal_mod = importlib.import_module("utils.game_modal")
-                    if hasattr(modal_mod, "open_edit_modal"):
+                    if game_modal and hasattr(game_modal, "open_edit_modal"):
                         def _on_save(payload):
                             app.games[i]["title"] = payload.get("title", app.games[i]["title"])
                             app.games[i]["description"] = payload.get(
@@ -453,7 +455,7 @@ def build_home(parent: QWidget, app):
                                 pass
                             render_cards()
 
-                        modal_mod.open_edit_modal(
+                        game_modal.open_edit_modal(
                             app,
                             app.games[i].get("title", ""),
                             app.games[i].get("description", ""),
@@ -470,8 +472,7 @@ def build_home(parent: QWidget, app):
 
             def on_delete_triggered(checked=False, i=idx):
                 try:
-                    modal_mod = importlib.import_module("utils.game_modal")
-                    if hasattr(modal_mod, "open_delete_confirm"):
+                    if game_modal and hasattr(game_modal, "open_delete_confirm"):
                         def _on_confirm():
                             try:
                                 del app.games[i]
@@ -484,7 +485,7 @@ def build_home(parent: QWidget, app):
                                 pass
                             render_cards()
 
-                        modal_mod.open_delete_confirm(app, on_confirm=_on_confirm)
+                        game_modal.open_delete_confirm(app, on_confirm=_on_confirm)
                         return
                 except Exception:
                     pass
@@ -511,21 +512,20 @@ def build_home(parent: QWidget, app):
 
             def _on_card_click(event, i=idx):
                 try:
-                    mg = importlib.import_module("modules.modify_game")
-                    if hasattr(mg, "open_modify_game"):
-                        mg.open_modify_game(
+                    if modify_game and hasattr(modify_game, "open_modify_game"):
+                        modify_game.open_modify_game(
                             app,
                             app.games[i].get("title", ""),
                             app.games[i].get("description", "")
                         )
                         return
-                except Exception:
-                    pass
+                except Exception as exc:
+                    print(f"Failed to open modify UI: {exc}")
 
                 try:
                     app.show_static_modal(
                         f"Modify {app.games[i].get('title', '')}",
-                        "Static modify UI not available."
+                        "Static modify UI not available. Check console output for details."
                     )
                 except Exception:
                     pass

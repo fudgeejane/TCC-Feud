@@ -9,6 +9,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import uuid
 
+try:
+    import modules.play_game as play_game
+except Exception:
+    play_game = None
+
 
 def open_modify_game(app, title: str, description: str, game_id: str | None = None):
     """Open a full-page Modify Game view inside the application's stack.
@@ -127,16 +132,13 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
 
     def _on_play(t=title, d=description):
         try:
-            import importlib
-
-            pg = importlib.import_module("modules.play_game")
-            if hasattr(pg, "open_play_game"):
+            if play_game and hasattr(play_game, "open_play_game"):
                 # open Play view and load the first question from the DB for this game
                 try:
-                    pg.open_play_game(app, t, d, load_db_first=True)
+                    play_game.open_play_game(app, t, d, load_db_first=True)
                 except TypeError:
                     # fallback if older signature
-                    pg.open_play_game(app, t, d)
+                    play_game.open_play_game(app, t, d)
                 return
         except Exception:
             pass

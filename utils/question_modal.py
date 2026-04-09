@@ -204,17 +204,18 @@ def open_confirm_modal(parent, title: str, message: str,
     backdrop = QWidget(dlg)
     backdrop.setStyleSheet("background: rgba(2,6,23,0.65);")
     back_layout = QVBoxLayout(backdrop)
-    back_layout.setContentsMargins(18, 18, 18, 18)
+    back_layout.setContentsMargins(10, 10, 10, 10)
 
     panel = QWidget(backdrop)
     panel.setStyleSheet("""
         background: #020617;
         border-radius:14px;
-        padding:14px;
+        padding:10px;
     """)
     panel.setMinimumWidth(460)
     panel_layout = QVBoxLayout(panel)
-    panel_layout.setSpacing(10)
+    panel_layout.setContentsMargins(12, 12, 12, 10)
+    panel_layout.setSpacing(8)
 
     # Shadow
     shadow = QGraphicsDropShadowEffect()
@@ -234,6 +235,7 @@ def open_confirm_modal(parent, title: str, message: str,
     panel_layout.addWidget(lbl)
 
     btns = QHBoxLayout()
+    btns.setContentsMargins(0, 4, 0, 0)
     btns.addStretch()
 
     no = QPushButton(cancel_text)

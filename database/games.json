@@ -45,27 +45,28 @@
         "id": "ff671934d34c41c29ce8764591ca377e"
       },
       {
-        "question": "Ano ang pampagising ng ComSci student habang nagco-code?",
+        "question": "Ano ang dahilan kung bakit late ang  studyante  sa klase?",
+        "fast_money": false,
         "answers": [
           {
-            "text": "Kape",
+            "text": "Traffic",
+            "score": 40
+          },
+          {
+            "text": "Oversleep",
             "score": 30
           },
           {
-            "text": "Energy Drink",
-            "score": 25
-          },
-          {
-            "text": "Music",
-            "score": 20
-          },
-          {
-            "text": "Snacks / Pagkain",
+            "text": "Tinatamad",
             "score": 15
           },
           {
-            "text": "Pressure / Deadline",
+            "text": "Mahaba pila sa sakayan",
             "score": 10
+          },
+          {
+            "text": "Nakalimutang may pasok",
+            "score": 5
           },
           {
             "text": "",
@@ -82,7 +83,27 @@
         ],
         "total": 100,
         "game_id": null,
-        "id": "fbd845ddaa824e36bc1715f62c9ad105"
+        "id": "692ea42b0c9544938bd078bbbf50fe51"
+      }
+    ],
+    "teams": [
+      {
+        "name": "block a",
+        "members": [
+          "FJ",
+          "FJ",
+          "FJ",
+          "FJ"
+        ]
+      },
+      {
+        "name": "block b",
+        "members": [
+          "FJ",
+          "FJ",
+          "FJ",
+          "FJ"
+        ]
       }
     ]
   }

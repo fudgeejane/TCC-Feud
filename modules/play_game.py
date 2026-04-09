@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QDialog,
     QLineEdit,
+    QCheckBox,
+    QButtonGroup,
     QStackedLayout,
     QGraphicsDropShadowEffect,
 )
@@ -17,14 +19,20 @@ from PySide6.QtCore import (
     Qt,
     QEvent,
     QObject,
+    QTimer,
     QEasingCurve,
     QPropertyAnimation,
     QSequentialAnimationGroup,
 )
-from PySide6.QtGui import QFont, QColor, QIntValidator
+from PySide6.QtGui import QFont, QColor, QIntValidator, QPixmap
 import utils.game_modal as game_modal
 import modules.display_game as display_game
 import database.db as db
+
+try:
+    import modules.modify_game as modify_game
+except Exception:
+    modify_game = None
 
 
 def open_play_game(app, title: str, description: str, load_db_first: bool = False):
@@ -40,15 +48,23 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     page = QWidget()
     page.setStyleSheet("""
         QWidget {
-            background-color: #020617;
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #040B1A, stop:0.45 #071A3A, stop:1 #041025);
             color: #E2E8F0;
             font-family: Segoe UI, Arial, sans-serif;
+        }
+        QToolTip {
+            background: #0B2448;
+            color: #EAF4FF;
+            border: 1px solid rgba(125, 211, 252, 0.55);
+            padding: 6px 8px;
+            border-radius: 8px;
         }
     """)
 
     layout = QVBoxLayout(page)
-    layout.setContentsMargins(24, 24, 24, 20)
-    layout.setSpacing(16)
+    layout.setContentsMargins(60, 30, 60, 30)
+    layout.setSpacing(22)
 
     def make_shadow(w, blur=24, color=QColor(59, 130, 246, 120), y=6):
         shadow = QGraphicsDropShadowEffect(w)
@@ -64,55 +80,52 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     top_header = QFrame()
     top_header.setStyleSheet("""
         QFrame {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                stop:0 #0F172A, stop:1 #111827);
-            border: 1px solid rgba(255,255,255,0.06);
+            background: none;
+            border: none;
             border-radius: 18px;
         }
     """)
     make_shadow(top_header, blur=28, color=QColor(0, 0, 0, 120), y=8)
 
     th_layout = QHBoxLayout(top_header)
-    th_layout.setContentsMargins(20, 14, 20, 14)
-    th_layout.setSpacing(14)
+    th_layout.setContentsMargins(0, 0, 0, 0)
+    th_layout.setSpacing(18)
 
     title_wrap = QVBoxLayout()
     title_wrap.setSpacing(2)
 
-    top_title = QLabel(title or "Family Feud")
-    top_title.setStyleSheet("""
-        color: #F8FAFC;
-        font-size: 24px;
-        font-weight: 800;
-    """)
+    top_title = QLabel()
+    try:
+        from pathlib import Path
 
-    top_subtitle = QLabel(description or "Play and manage the current round")
-    top_subtitle.setStyleSheet("""
-        color: #94A3B8;
-        font-size: 12px;
-        font-weight: 500;
-    """)
+        assets_logo = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
+        if assets_logo.exists():
+            pix = QPixmap(str(assets_logo))
+            if not pix.isNull():
+                top_title.setPixmap(pix.scaledToWidth(280, Qt.SmoothTransformation))
+            else:
+                top_title.setText(title or "Family Feud")
+        else:
+            top_title.setText(title or "Family Feud")
+    except Exception:
+        top_title.setText(title or "Family Feud")
+
+    if top_title.text():
+        top_title.setStyleSheet("""
+            color: #F4F8FF;
+            font-size: 24px;
+            font-weight: 900;
+        """)
 
     title_wrap.addWidget(top_title)
-    title_wrap.addWidget(top_subtitle)
 
     th_layout.addLayout(title_wrap)
     th_layout.addStretch()
 
-    round_badge = QLabel("LIVE GAME")
-    round_badge.setAlignment(Qt.AlignCenter)
-    round_badge.setFixedHeight(32)
-    round_badge.setStyleSheet("""
-        background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-            stop:0 #2563EB, stop:1 #7C3AED);
-        color: white;
-        border-radius: 12px;
-        padding: 0 14px;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1px;
-    """)
-    th_layout.addWidget(round_badge, alignment=Qt.AlignVCenter)
+    top_actions = QHBoxLayout()
+    top_actions.setContentsMargins(0, 0, 0, 0)
+    top_actions.setSpacing(10)
+    th_layout.addLayout(top_actions)
 
     layout.addWidget(top_header)
 
@@ -131,8 +144,8 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         panel.setStyleSheet("""
             QFrame {
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                    stop:0 #0F172A, stop:1 #111827);
-                border: 1px solid rgba(255,255,255,0.06);
+                    stop:0 #091A36, stop:1 #0A2144);
+                border: none;
                 border-radius: 18px;
             }
         """)
@@ -144,10 +157,12 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
         team_label = QLabel("TEAM")
         team_label.setStyleSheet("""
-            color: #60A5FA;
+            color: #7DD3FC;
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 1px;
+            border: none;
+                background: none;
         """)
 
         name_btn = QPushButton(team_name)
@@ -156,31 +171,61 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         name_btn.setStyleSheet("""
             QPushButton {
                 text-align: left;
-                color: #F8FAFC;
+                color: #F1F5F9;
                 font-size: 18px;
                 font-weight: 800;
                 border: none;
                 padding: 0;
+                background: none;
             }
             QPushButton:hover {
-                color: #93C5FD;
+                color: #BAE6FD;
             }
         """)
 
         score_title = QLabel("SCORE")
         score_title.setStyleSheet("""
-            color: #94A3B8;
+            color: #9FB8D1;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 1px;
+            border: none;
         """)
+
+        members_title = QLabel("MEMBERS")
+        members_title.setStyleSheet("""
+            color: #9FB8D1;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border: none;
+            background: none;
+        """)
+
+        members_widget = QWidget()
+        m_layout = QVBoxLayout(members_widget)
+        m_layout.setContentsMargins(0, 0, 0, 0)
+        m_layout.setSpacing(4)
+
+        member_labels = []
+        for _ in range(4):
+            ml = QLabel("-")
+            ml.setStyleSheet("""
+                color: #CFE7FF;
+                font-size: 11px;
+                font-weight: 600;
+                border: none;
+                background: none;
+            """)
+            member_labels.append(ml)
+            m_layout.addWidget(ml)
 
         score = QLabel("0")
         score.setFixedHeight(110)
         score.setAlignment(Qt.AlignCenter)
         score.setStyleSheet("""
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #22C55E, stop:1 #2563EB);
+                stop:0 #14B8A6, stop:1 #0EA5E9);
             border-radius: 18px;
             color: white;
             font-size: 34px;
@@ -193,7 +238,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         strike.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                    stop:0 #3B82F6, stop:1 #0EA5E9);
+                    stop:0 #0EA5E9, stop:1 #0284C7);
                 color: white;
                 border: none;
                 border-radius: 14px;
@@ -203,19 +248,21 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                    stop:0 #60A5FA, stop:1 #38BDF8);
+                    stop:0 #38BDF8, stop:1 #0EA5E9);
             }
             QPushButton:pressed {
-                background: #2563EB;
+                background: #0369A1;
             }
         """)
 
         strikes_title = QLabel("STRIKES")
         strikes_title.setStyleSheet("""
-            color: #94A3B8;
+            color: #9FB8D1;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 1px;
+            border: none;
+                                    background: none;
         """)
 
         strikes_widget = QWidget()
@@ -242,6 +289,8 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
         pl.addWidget(team_label)
         pl.addWidget(name_btn)
+        pl.addWidget(members_title)
+        pl.addWidget(members_widget)
         pl.addWidget(score_title)
         pl.addWidget(score)
         pl.addWidget(strike)
@@ -250,6 +299,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         pl.addStretch()
 
         panel._name_btn = name_btn
+        panel._member_labels = member_labels
         panel._score_lbl = score
         panel._strike_btn = strike
         panel._strike_labels = strike_labels
@@ -267,8 +317,8 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     board.setStyleSheet("""
         QFrame {
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #071432, stop:0.55 #0B3B8C, stop:1 #041628);
-            border: 1px solid rgba(255,255,255,0.08);
+                stop:0 #05214A, stop:0.55 #0B3A72, stop:1 #05274E);
+            border: 1px solid rgba(125, 211, 252, 0.24);
             border-radius: 24px;
         }
     """)
@@ -278,25 +328,99 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     b_layout.setContentsMargins(18, 18, 18, 18)
     b_layout.setSpacing(16)
 
+    round_badge = QLabel("LIVE GAME")
+    round_badge.setAlignment(Qt.AlignCenter)
+    round_badge.setFixedHeight(32)
+    round_badge.setStyleSheet("""
+        background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+            stop:0 #0EA5E9, stop:1 #2563EB);
+        color: white;
+        border-radius: 12px;
+        padding: 0 14px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 1px;
+    """)
+    b_layout.addWidget(round_badge)
+
     header = QLabel(title or "QUESTION")
     header.setAlignment(Qt.AlignCenter)
     header.setWordWrap(True)
     header.setStyleSheet("""
         background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-            stop:0 #2563EB, stop:1 #7C3AED);
+            stop:0 #0284C7, stop:1 #0369A1);
         color: white;
-        padding: 16px 18px;
-        font-size: 24px;
+        padding: 16px 20px;
+        font-size: 23px;
         font-weight: 900;
         border-radius: 18px;
     """)
-    make_shadow(header, blur=20, color=QColor(79, 70, 229, 90), y=4)
+    make_shadow(header, blur=20, color=QColor(3, 105, 161, 100), y=4)
     b_layout.addWidget(header)
 
+  
     answers = QWidget()
     a_layout = QHBoxLayout(answers)
     a_layout.setContentsMargins(6, 6, 6, 6)
     a_layout.setSpacing(16)
+
+    cheat_sheet = QFrame()
+    cheat_sheet.setStyleSheet("""
+        QFrame {
+            background: rgba(2, 12, 28, 0.55);
+            border: 1px solid rgba(125, 211, 252, 0.22);
+            border-radius: 14px;
+        }
+    """)
+
+    cs_layout = QVBoxLayout(cheat_sheet)
+    cs_layout.setContentsMargins(14, 12, 14, 12)
+    cs_layout.setSpacing(8)
+
+    cs_title = QLabel("GAME MASTER CHEAT SHEET")
+    cs_title.setStyleSheet("""
+        color: #7DD3FC;
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        border: none;
+        background: transparent;
+    """)
+    cs_layout.addWidget(cs_title)
+
+    cs_rows_widget = QWidget()
+    cs_rows_layout = QHBoxLayout(cs_rows_widget)
+    cs_rows_layout.setContentsMargins(0, 0, 0, 0)
+    cs_rows_layout.setSpacing(20)
+
+    cs_left = QVBoxLayout()
+    cs_left.setContentsMargins(0, 0, 0, 0)
+    cs_left.setSpacing(4)
+
+    cs_right = QVBoxLayout()
+    cs_right.setContentsMargins(0, 0, 0, 0)
+    cs_right.setSpacing(4)
+
+    cheat_sheet_labels = []
+    for i in range(8):
+        row_lbl = QLabel(f"{i + 1}. -")
+        row_lbl.setStyleSheet("""
+            color: #E2E8F0;
+            font-size: 12px;
+            font-weight: 700;
+            border: none;
+            background: transparent;
+        """)
+        cheat_sheet_labels.append(row_lbl)
+        if i < 4:
+            cs_left.addWidget(row_lbl)
+        else:
+            cs_right.addWidget(row_lbl)
+
+    cs_rows_layout.addLayout(cs_left)
+    cs_rows_layout.addLayout(cs_right)
+    cs_layout.addWidget(cs_rows_widget)
+    cheat_sheet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
     sample_rounds = [
         {
@@ -329,16 +453,50 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
     page.game_state = {
         "teams": [
-            {"name": "Team A", "score": 0, "strikes": 0},
-            {"name": "Team B", "score": 0, "strikes": 0},
+            {"name": "Team A", "members": ["", "", "", ""], "score": 0, "strikes": 0},
+            {"name": "Team B", "members": ["", "", "", ""], "score": 0, "strikes": 0},
         ],
+        "round_points": [0, 0],
         "current_round": None,
+        "current_round_number": 1,
+        "total_rounds": len(sample_rounds),
         "game_idx": 0,
         "question_idx": 0,
         "answers_widgets": [],
+        "revealed_answer_indices": [],
         "fast_money": False,
         "fast_money_team": None,
+        "current_control_team": None,
+        "locked_out_team": None,
+        "steal_used": False,
+        "game_finished": False,
     }
+
+    def sync_audience_display():
+        try:
+            dw = getattr(app, "display_window", None)
+            if dw is not None and hasattr(dw, "_refresh_display"):
+                if getattr(dw, "_refresh_pending", False):
+                    return
+
+                dw._refresh_pending = True
+
+                def _run_refresh():
+                    try:
+                        if hasattr(dw, "_refresh_display"):
+                            dw._refresh_display()
+                    except Exception:
+                        pass
+                    finally:
+                        try:
+                            dw._refresh_pending = False
+                        except Exception:
+                            pass
+
+                # Queue refresh for next event-loop cycle to avoid paint re-entrancy.
+                QTimer.singleShot(0, _run_refresh)
+        except Exception:
+            pass
 
     def build_answer_boxes():
         for w in page.game_state.get("answers_widgets", []):
@@ -362,37 +520,39 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         total_slots = 8
 
         class FlashCard(QFrame):
-            def __init__(self, text: str, pts: int, active: bool = True):
+            def __init__(self, text: str, pts: int, active: bool = True, rank: int = 1, slot_idx: int = -1):
                 super().__init__()
                 self._answer_text = text or ""
                 self._answer_pts = pts or 0
                 self._revealed = False
+                self._consumed = False
                 self._active = bool(active)
                 self._reveal_anim = None
+                self._slot_index = slot_idx
 
-                self.setFixedHeight(74)
+                self.setFixedHeight(76)
                 self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
                 if self._active:
                     self.setStyleSheet("""
                         QFrame {
                             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                                stop:0 #08254A, stop:1 #0B2E63);
-                            border: 1px solid rgba(255,255,255,0.07);
+                                stop:0 #082952, stop:1 #0B366B);
+                            border: 1px solid rgba(125, 211, 252, 0.18);
                             border-radius: 18px;
                         }
                         QFrame:hover {
                             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                                stop:0 #0A2E5D, stop:1 #123C7A);
-                            border: 1px solid rgba(96,165,250,0.35);
+                                stop:0 #0A3368, stop:1 #134983);
+                            border: 1px solid rgba(125, 211, 252, 0.45);
                         }
                     """)
                     make_shadow(self, blur=18, color=QColor(0, 0, 0, 90), y=4)
                 else:
                     self.setStyleSheet("""
                         QFrame {
-                            background: #1E293B;
-                            border: 2px dashed #475569;
+                            background: #112744;
+                            border: 2px dashed #3B5A7D;
                             border-radius: 18px;
                         }
                     """)
@@ -411,14 +571,14 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 self.front.setStyleSheet("""
                     background: transparent;
                     border: none;
-                    color: #93C5FD;
+                    color: #BAE6FD;
                     font-weight: 900;
-                    font-size: 15px;
+                    font-size: 14px;
                     letter-spacing: 1px;
                 """ if self._active else """
                     background: transparent;
                     border: none;
-                    color: #94A3B8;
+                    color: #8BA4BF;
                     font-weight: 800;
                     font-size: 22px;
                 """)
@@ -443,7 +603,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 self._pts_lbl.setFixedSize(64, 42)
                 self._pts_lbl.setStyleSheet("""
                     background: qradialgradient(cx:0.3, cy:0.3, radius:1,
-                        fx:0.3, fy:0.3, stop:0 #FDE68A, stop:1 #F59E0B);
+                        fx:0.3, fy:0.3, stop:0 #FDE68A, stop:1 #F97316);
                     border-radius: 16px;
                     color: #111827;
                     font-size: 18px;
@@ -451,6 +611,19 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 """)
                 self._pts_lbl.setVisible(False)
 
+                self._rank_lbl = QLabel(str(rank))
+                self._rank_lbl.setAlignment(Qt.AlignCenter)
+                self._rank_lbl.setFixedSize(32, 32)
+                self._rank_lbl.setStyleSheet("""
+                    background: rgba(14, 165, 233, 0.22);
+                    border: 1px solid rgba(125, 211, 252, 0.35);
+                    border-radius: 10px;
+                    color: #E0F2FE;
+                    font-size: 13px;
+                    font-weight: 900;
+                """)
+
+                hl.addWidget(self._rank_lbl)
                 hl.addWidget(self._content, stretch=1)
                 hl.addWidget(self._pts_lbl)
 
@@ -459,10 +632,13 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                     self.setCursor(Qt.ArrowCursor)
                 else:
                     self.setCursor(Qt.PointingHandCursor)
+                    self.setToolTip("Reveal this answer")
 
             def mousePressEvent(self, event):
-                if not self._active or self._revealed:
+                if not self._active or self._revealed or self._consumed:
                     return
+                self._consumed = True
+                self.setCursor(Qt.ArrowCursor)
                 self.reveal()
 
             def ensure_revealed_visible(self):
@@ -532,6 +708,27 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                         award_to_team_dialog(self._answer_pts)
                     except Exception:
                         pass
+                    try:
+                        revealed = page.game_state.setdefault("revealed_answer_indices", [])
+                        if self._slot_index not in revealed and self._slot_index >= 0:
+                            revealed.append(self._slot_index)
+                    except Exception:
+                        pass
+                    try:
+                        sync_audience_display()
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        revealed = page.game_state.setdefault("revealed_answer_indices", [])
+                        if self._slot_index not in revealed and self._slot_index >= 0:
+                            revealed.append(self._slot_index)
+                    except Exception:
+                        pass
+                    try:
+                        sync_audience_display()
+                    except Exception:
+                        pass
 
         class _RevealStabilizer(QObject):
             def eventFilter(self, obj, event):
@@ -558,9 +755,9 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             if i < len(answers_data):
                 text, pts = answers_data[i]
                 is_empty = (not str(text).strip()) and (int(pts or 0) == 0)
-                card = FlashCard(text, pts, active=(not is_empty))
+                card = FlashCard(text, pts, active=(not is_empty), rank=i + 1, slot_idx=i)
             else:
-                card = FlashCard("", 0, active=False)
+                card = FlashCard("", 0, active=False, rank=i + 1, slot_idx=i)
 
             container = QWidget()
             hl = QHBoxLayout(container)
@@ -580,20 +777,40 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
     def load_round(round_data, from_db=False):
         page.game_state["current_round"] = round_data
-        page.game_state["teams"][0]["score"] = 0
-        page.game_state["teams"][1]["score"] = 0
+        page.game_state["revealed_answer_indices"] = []
+        page.game_state["round_points"] = [0, 0]
         page.game_state["teams"][0]["strikes"] = 0
         page.game_state["teams"][1]["strikes"] = 0
+        page.game_state["current_round_number"] = page.game_state.get("question_idx", 0) + 1
         page.game_state["from_db"] = bool(from_db)
         page.game_state["fast_money"] = bool(round_data.get("fast_money", False))
         page.game_state["fast_money_team"] = None
+        page.game_state["current_control_team"] = None
+        page.game_state["locked_out_team"] = None
+        page.game_state["steal_used"] = False
+        page.game_state["game_finished"] = False
         header.setText(round_data["question"])
         update_team_panels()
         build_answer_boxes()
+        update_cheat_sheet()
         try:
             update_next_button_state()
         except Exception:
             pass
+
+        try:
+            if page.game_state.get("from_db"):
+                round_number = page.game_state.get("question_idx", 0) + 1
+            else:
+                round_number = page.game_state.get("question_idx", 0) + 1
+            status = f"ROUND {round_number}"
+            if page.game_state.get("fast_money"):
+                status += " • FAST MONEY"
+            round_badge.setText(status)
+        except Exception:
+            round_badge.setText("LIVE GAME")
+
+        sync_audience_display()
 
     def get_db_round(game_idx=0, question_idx=0):
         games = db.load_games()
@@ -617,64 +834,302 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             "fast_money": bool(q.get("fast_money", False)),
         }
 
+    def get_db_teams(game_idx=0):
+        games = db.load_games()
+        if not games:
+            return None
+        if game_idx < 0 or game_idx >= len(games):
+            return None
+
+        game = games[game_idx]
+        teams = game.get("teams", [])
+        if not isinstance(teams, list):
+            teams = []
+
+        out = []
+        for i in range(2):
+            team = teams[i] if i < len(teams) and isinstance(teams[i], dict) else {}
+            name = str(team.get("name", f"Team {chr(ord('A') + i)}") or f"Team {chr(ord('A') + i)}")
+            members = team.get("members", [])
+            if not isinstance(members, list):
+                members = []
+            members = [(str(members[j]) if j < len(members) else "") for j in range(4)]
+            out.append({"name": name, "members": members})
+        return out
+
+    def apply_teams(teams_data):
+        if not teams_data or not isinstance(teams_data, list):
+            return
+        for i in range(2):
+            if i >= len(page.game_state["teams"]):
+                continue
+            data = teams_data[i] if i < len(teams_data) and isinstance(teams_data[i], dict) else {}
+            page.game_state["teams"][i]["name"] = str(data.get("name", page.game_state["teams"][i]["name"]))
+            members = data.get("members", [])
+            if not isinstance(members, list):
+                members = []
+            page.game_state["teams"][i]["members"] = [(str(members[j]) if j < len(members) else "") for j in range(4)]
+
     def load_first_db_round():
         r = get_db_round(game_idx=0, question_idx=0)
         if r is None:
             QMessageBox.warning(page, "No Games", "No game found in database/games.json")
             return
+        try:
+            games = db.load_games()
+            questions = games[0].get("questions", []) if games and len(games) > 0 else []
+            page.game_state["total_rounds"] = max(1, len(questions))
+        except Exception:
+            page.game_state["total_rounds"] = 1
         page.game_state["game_idx"] = 0
         page.game_state["question_idx"] = 0
+        try:
+            apply_teams(get_db_teams(game_idx=0))
+        except Exception:
+            pass
         load_round(r, from_db=True)
 
     def award_to_team_dialog(points: int):
+        class _RequiredTeamDialog(QDialog):
+            def reject(self):
+                # Prevent Esc/reject to enforce explicit team selection.
+                return
+
+        def choose_team_idx(window_title: str, message: str):
+            dlg = _RequiredTeamDialog(page)
+            dlg.setModal(True)
+            dlg.setWindowTitle(window_title)
+            dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+            dlg.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
+            dlg.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
+            dlg.setWindowFlag(Qt.WindowCloseButtonHint, False)
+            dlg.setWindowFlag(Qt.FramelessWindowHint, True)
+            dlg.setStyleSheet(game_modal.STYLE)
+
+            dlg_layout = QVBoxLayout(dlg)
+            dlg_layout.setContentsMargins(12, 12, 12, 12)
+            dlg_layout.setSpacing(10)
+
+            title_label = QLabel(window_title)
+            title_label.setObjectName("headerTitle")
+            title_label.setStyleSheet("background: none;")
+            dlg_layout.addWidget(title_label)
+
+            message_label = QLabel(message)
+            message_label.setWordWrap(True)
+            message_label.setStyleSheet("background: none;")
+            dlg_layout.addWidget(message_label)
+
+            btns = QHBoxLayout()
+            ta_btn = QPushButton(page.game_state["teams"][0]["name"])
+            tb_btn = QPushButton(page.game_state["teams"][1]["name"])
+            ta_btn.setCursor(Qt.PointingHandCursor)
+            tb_btn.setCursor(Qt.PointingHandCursor)
+            btns.addStretch()
+            btns.addWidget(ta_btn)
+            btns.addWidget(tb_btn)
+            btns.addStretch()
+            dlg_layout.addLayout(btns)
+
+            selected = {"idx": None}
+
+            def _choose(idx: int):
+                selected["idx"] = idx
+                dlg.accept()
+
+            ta_btn.clicked.connect(lambda: _choose(0))
+            tb_btn.clicked.connect(lambda: _choose(1))
+
+            dlg.setMinimumWidth(420)
+            dlg.adjustSize()
+            dlg.exec()
+
+            if selected["idx"] in (0, 1):
+                return selected["idx"]
+            return 0
+
         if page.game_state.get("fast_money", False):
             team_idx = page.game_state.get("fast_money_team")
             if team_idx is None:
-                msg = QMessageBox(page)
-                msg.setWindowTitle("Fast Money Team")
-                msg.setText("Select which team is playing Fast Money.")
-                ta = msg.addButton(page.game_state["teams"][0]["name"], QMessageBox.AcceptRole)
-                tb = msg.addButton(page.game_state["teams"][1]["name"], QMessageBox.AcceptRole)
-                msg.addButton("Cancel", QMessageBox.RejectRole)
-                msg.exec()
-                chosen = msg.clickedButton()
-                if chosen == ta:
-                    team_idx = 0
-                elif chosen == tb:
-                    team_idx = 1
-                else:
-                    return
+                team_idx = choose_team_idx(
+                    "Fast Money Team",
+                    "Select which team is playing Fast Money before awarding points."
+                )
                 page.game_state["fast_money_team"] = team_idx
 
             page.game_state["teams"][team_idx]["score"] += points
+            page.game_state["round_points"][team_idx] += points
+            page.game_state["current_control_team"] = team_idx
             update_team_panels()
             QMessageBox.information(
                 page,
                 "Fast Money",
                 f"{page.game_state['teams'][team_idx]['name']} earns {points} points in Fast Money."
             )
+            sync_audience_display()
             return
 
-        msg = QMessageBox(page)
-        msg.setWindowTitle("Award Points")
-        msg.setText(f"Which team receives {points} points?")
-        ta = msg.addButton(page.game_state["teams"][0]["name"], QMessageBox.AcceptRole)
-        tb = msg.addButton(page.game_state["teams"][1]["name"], QMessageBox.AcceptRole)
-        msg.addButton("Cancel", QMessageBox.RejectRole)
-        msg.exec()
+        locked_out_team = page.game_state.get("locked_out_team")
+        if locked_out_team in (0, 1):
+            team_idx = 1 - locked_out_team
+            page.game_state["teams"][team_idx]["score"] += points
+            page.game_state["round_points"][team_idx] += points
+            page.game_state["current_control_team"] = team_idx
+            update_team_panels()
+            QMessageBox.information(
+                page,
+                "Locked Out",
+                f"{page.game_state['teams'][locked_out_team]['name']} is locked out for this round. "
+                f"{points} points were awarded to {page.game_state['teams'][team_idx]['name']}."
+            )
+            sync_audience_display()
+            return
 
-        chosen = msg.clickedButton()
-        if chosen == ta:
-            page.game_state["teams"][0]["score"] += points
-        elif chosen == tb:
-            page.game_state["teams"][1]["score"] += points
+        chosen_idx = choose_team_idx(
+            "Award Points",
+            f"Which team receives {points} points?"
+        )
+        page.game_state["teams"][chosen_idx]["score"] += points
+        page.game_state["round_points"][chosen_idx] += points
+        page.game_state["current_control_team"] = chosen_idx
         update_team_panels()
+        sync_audience_display()
+
+    def show_info_modal(window_title: str, message: str, button_text: str = "OK"):
+        dlg = QDialog(page)
+        dlg.setModal(True)
+        dlg.setWindowTitle(window_title)
+        dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowCloseButtonHint, False)
+        dlg.setWindowFlag(Qt.FramelessWindowHint, True)
+        dlg.setStyleSheet(game_modal.STYLE)
+
+        dlg_layout = QVBoxLayout(dlg)
+        dlg_layout.setContentsMargins(12, 12, 12, 12)
+        dlg_layout.setSpacing(10)
+
+        title_label = QLabel(window_title)
+        title_label.setObjectName("headerTitle")
+        title_label.setStyleSheet("background: none;")
+        dlg_layout.addWidget(title_label)
+
+        message_label = QLabel(message)
+        message_label.setWordWrap(True)
+        message_label.setStyleSheet("background: none;")
+        dlg_layout.addWidget(message_label)
+
+        btn_row = QHBoxLayout()
+        ok_btn = QPushButton(button_text)
+        ok_btn.setObjectName("okBtn")
+        ok_btn.setCursor(Qt.PointingHandCursor)
+        ok_btn.clicked.connect(dlg.accept)
+        btn_row.addStretch()
+        btn_row.addWidget(ok_btn)
+        dlg_layout.addLayout(btn_row)
+
+        dlg.setMinimumWidth(450)
+        dlg.adjustSize()
+        return dlg.exec() == QDialog.Accepted
+
+    def prompt_single_check_modal(window_title: str, message: str, options):
+        dlg = QDialog(page)
+        dlg.setModal(True)
+        dlg.setWindowTitle(window_title)
+        dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
+        dlg.setWindowFlag(Qt.WindowCloseButtonHint, False)
+        dlg.setWindowFlag(Qt.FramelessWindowHint, True)
+        dlg.setStyleSheet(game_modal.STYLE)
+
+        dlg_layout = QVBoxLayout(dlg)
+        dlg_layout.setContentsMargins(12, 12, 12, 12)
+        dlg_layout.setSpacing(10)
+
+        title_label = QLabel(window_title)
+        title_label.setObjectName("headerTitle")
+        title_label.setStyleSheet("background: none;")
+        dlg_layout.addWidget(title_label)
+
+        message_label = QLabel(message)
+        message_label.setWordWrap(True)
+        message_label.setStyleSheet("background: none;")
+        dlg_layout.addWidget(message_label)
+
+        selected = {"text": ""}
+        btn_group = QButtonGroup(dlg)
+        btn_group.setExclusive(True)
+
+        for idx, option_text in enumerate(options):
+            check = QCheckBox(str(option_text))
+            check.setCursor(Qt.PointingHandCursor)
+            check.setStyleSheet("background: none;")
+            btn_group.addButton(check, idx)
+            dlg_layout.addWidget(check)
+
+        btn_row = QHBoxLayout()
+        cancel_btn = QPushButton("Cancel")
+        submit_btn = QPushButton("Submit")
+        cancel_btn.setObjectName("cancelBtn")
+        submit_btn.setObjectName("createBtn")
+        cancel_btn.setCursor(Qt.PointingHandCursor)
+        submit_btn.setCursor(Qt.PointingHandCursor)
+        submit_btn.setEnabled(False)
+
+        def _on_choice_change():
+            checked = btn_group.checkedButton()
+            submit_btn.setEnabled(checked is not None)
+            if checked is not None:
+                selected["text"] = checked.text().strip()
+
+        btn_group.buttonToggled.connect(lambda _btn, _checked: _on_choice_change())
+        cancel_btn.clicked.connect(dlg.reject)
+        submit_btn.clicked.connect(dlg.accept)
+
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(submit_btn)
+        dlg_layout.addLayout(btn_row)
+
+        dlg.setMinimumWidth(500)
+        dlg.adjustSize()
+
+        ok = dlg.exec() == QDialog.Accepted
+        return selected["text"], ok
+
+    def update_cheat_sheet():
+        current = page.game_state.get("current_round") or {}
+        answers_data = current.get("answers", []) if isinstance(current, dict) else []
+        for i, row_lbl in enumerate(cheat_sheet_labels):
+            if i < len(answers_data):
+                text, pts = answers_data[i]
+                text_clean = str(text).strip() if text is not None else ""
+                if not text_clean:
+                    text_clean = ""
+                try:
+                    pts_value = int(pts or 0)
+                except Exception:
+                    pts_value = 0
+                row_lbl.setText(f"{i + 1}. {text_clean} ({pts_value})")
+            else:
+                row_lbl.setText(f"{i + 1}. -")
 
     def update_team_panels():
         team_a_panel._score_lbl.setText(str(page.game_state["teams"][0]["score"]))
         team_b_panel._score_lbl.setText(str(page.game_state["teams"][1]["score"]))
         team_a_panel._name_btn.setText(page.game_state["teams"][0]["name"])
         team_b_panel._name_btn.setText(page.game_state["teams"][1]["name"])
+
+        team_a_members = page.game_state["teams"][0].get("members", [])
+        team_b_members = page.game_state["teams"][1].get("members", [])
+        for i, ml in enumerate(team_a_panel._member_labels):
+            value = team_a_members[i] if i < len(team_a_members) else ""
+            ml.setText(value if str(value).strip() else "-")
+        for i, ml in enumerate(team_b_panel._member_labels):
+            value = team_b_members[i] if i < len(team_b_members) else ""
+            ml.setText(value if str(value).strip() else "-")
 
         for i, sx in enumerate(team_a_panel._strike_labels):
             sx.setVisible(i < page.game_state["teams"][0]["strikes"])
@@ -693,20 +1148,49 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             update_team_panels()
 
     def increment_strike(idx):
+        if page.game_state.get("locked_out_team") in (0, 1):
+            return
+
         page.game_state["teams"][idx]["strikes"] += 1
         if page.game_state["teams"][idx]["strikes"] > 3:
             page.game_state["teams"][idx]["strikes"] = 3
         update_team_panels()
+        sync_audience_display()
+
         if page.game_state["teams"][idx]["strikes"] >= 3:
+            page.game_state["locked_out_team"] = idx
             page.game_state["steal_pending"] = 1 - idx
+            page.game_state["current_control_team"] = 1 - idx
+            stealing_team = page.game_state["teams"][1 - idx]["name"]
+            start_steal_clicked = show_info_modal(
+                "Team Locked Out",
+                f"{page.game_state['teams'][idx]['name']} reached 3 strikes and is locked out for the rest of this round.\n\n"
+                f"Only {stealing_team} can score until the next round.",
+                button_text="Start Steal"
+            )
+            try:
+                update_steal_button_state()
+            except Exception:
+                pass
+            if start_steal_clicked:
+                try:
+                    steal_attempt(1 - idx)
+                except Exception:
+                    pass
+            sync_audience_display()
 
     def steal_attempt(team_idx):
-        text, ok = QInputDialog.getText(
-            page,
-            "Steal Attempt",
-            f"{page.game_state['teams'][team_idx]['name']}, enter your steal answer:"
-        )
-        if not ok or not text:
+        if page.game_state.get("steal_used", False):
+            show_info_modal("Steal", "Steal was already used in this round.")
+            return
+
+        locked_out_team = page.game_state.get("locked_out_team")
+        if locked_out_team not in (0, 1):
+            show_info_modal("Steal", "No team is locked out in this round.")
+            return
+
+        if team_idx != (1 - locked_out_team):
+            show_info_modal("Steal", "Only the opposing team may attempt a steal.")
             return
 
         unrevealed = []
@@ -717,6 +1201,23 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             except Exception:
                 pass
 
+        if not unrevealed:
+            show_info_modal("Steal", "No unrevealed answers left to steal.")
+            return
+
+        choices = [card._answer_text.strip() for card in unrevealed if card._answer_text.strip()]
+        if not choices:
+            show_info_modal("Steal", "No valid steal choices are available.")
+            return
+
+        text, ok = prompt_single_check_modal(
+            "Steal Attempt",
+            f"{page.game_state['teams'][team_idx]['name']}, choose one steal answer:",
+            choices
+        )
+        if not ok or not text:
+            return
+
         matched = None
         for card in unrevealed:
             if card._answer_text.strip().lower() == text.strip().lower():
@@ -724,20 +1225,21 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 break
 
         if matched:
-            total = sum(c._answer_pts for c in unrevealed)
-            opponent_idx = 1 - team_idx
-            opponent_score = page.game_state["teams"][opponent_idx]["score"]
+            opponent_idx = locked_out_team
+            transferred = page.game_state["round_points"][opponent_idx]
+            try:
+                matched_points = int(getattr(matched, "_answer_pts", 0) or 0)
+            except Exception:
+                matched_points = 0
 
-            if total > opponent_score:
-                QMessageBox.information(
-                    page,
-                    "Steal",
-                    "Cannot steal more points than the opposing team currently has."
-                )
-                return
-
-            page.game_state["teams"][team_idx]["score"] += total
-            page.game_state["teams"][opponent_idx]["score"] -= total
+            page.game_state["teams"][team_idx]["score"] += transferred + matched_points
+            page.game_state["round_points"][team_idx] += transferred + matched_points
+            page.game_state["teams"][opponent_idx]["score"] -= transferred
+            if page.game_state["teams"][opponent_idx]["score"] < 0:
+                page.game_state["teams"][opponent_idx]["score"] = 0
+            page.game_state["round_points"][opponent_idx] = 0
+            page.game_state["steal_used"] = True
+            page.game_state["current_control_team"] = team_idx
 
             for c in unrevealed:
                 try:
@@ -746,13 +1248,29 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                     pass
 
             update_team_panels()
-            QMessageBox.information(
-                page,
-                "Steal",
-                f"Correct! {page.game_state['teams'][team_idx]['name']} steals {total} points."
+            try:
+                update_steal_button_state()
+            except Exception:
+                pass
+            sync_audience_display()
+            show_info_modal(
+                "Steal Success",
+                f"Correct! {page.game_state['teams'][team_idx]['name']} steals all points earned this round by "
+                f"{page.game_state['teams'][opponent_idx]['name']} ({transferred} points) and also earns "
+                f"{matched_points} points for the stolen answer.",
+                button_text="Nice"
             )
         else:
-            QMessageBox.information(page, "Steal", "Incorrect steal attempt.")
+            page.game_state["steal_used"] = True
+            try:
+                update_steal_button_state()
+            except Exception:
+                pass
+            sync_audience_display()
+            show_info_modal(
+                "Steal Miss",
+                f"Incorrect steal attempt. Points remain with {page.game_state['teams'][locked_out_team]['name']}."
+            )
 
     team_a_panel._name_btn.clicked.connect(lambda: rename_team(0))
     team_b_panel._name_btn.clicked.connect(lambda: rename_team(1))
@@ -761,47 +1279,34 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
     t_layout.addWidget(board, stretch=4)
     t_layout.addWidget(team_b_panel, stretch=1)
-    layout.addWidget(top)
-
-    # ----------------------------
-    # Controls row
-    # ----------------------------
-    controls = QWidget()
-    c_layout = QHBoxLayout(controls)
-    c_layout.setContentsMargins(0, 0, 0, 0)
-    c_layout.setSpacing(12)
-    c_layout.addStretch()
 
     control_buttons = {}
 
     next_btn = QPushButton("Next Round")
     next_btn.setCursor(Qt.PointingHandCursor)
+    next_btn.setToolTip("Load the next question")
     next_btn.setStyleSheet("""
         QPushButton {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #4F46E5, stop:1 #0EA5E9);
-            color: white;
-            border: none;
+            background: none;
+            color: #E2E8F0;
+            border: 1px solid rgba(125, 211, 252, 0.35);
             border-radius: 18px;
             padding: 14px 28px;
             font-size: 14px;
             font-weight: 800;
         }
         QPushButton:hover {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #6366F1, stop:1 #38BDF8);
+            background: rgba(125, 211, 252, 0.10);
+            border: 1px solid rgba(125, 211, 252, 0.55);
         }
         QPushButton:disabled {
-            background: #334155;
+            background: none;
             color: #94A3B8;
+            border: 1px solid rgba(148, 163, 184, 0.25);
         }
     """)
-    make_shadow(next_btn, blur=18, color=QColor(79, 70, 229, 110), y=6)
+    make_shadow(next_btn, blur=18, color=QColor(14, 165, 233, 120), y=6)
     control_buttons["Next Round"] = next_btn
-    c_layout.addWidget(next_btn)
-    c_layout.addStretch()
-
-    layout.addWidget(controls)
 
     def update_next_button_state():
         next_button = control_buttons.get("Next Round")
@@ -818,6 +1323,10 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             has_next = (qi + 1) < len(sample_rounds)
             next_button.setEnabled(bool(has_next))
 
+    def mark_game_finished():
+        page.game_state["game_finished"] = True
+        sync_audience_display()
+
     def next_round_action():
         if page.game_state.get("from_db"):
             gi = page.game_state.get("game_idx", 0)
@@ -825,6 +1334,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             r = get_db_round(game_idx=gi, question_idx=qi)
             if r is None:
                 control_buttons["Next Round"].setEnabled(False)
+                mark_game_finished()
                 QMessageBox.information(page, "End", "No more questions in this game.")
                 return
             page.game_state["question_idx"] = qi
@@ -836,194 +1346,112 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 load_round(sample_rounds[qi], from_db=False)
             else:
                 control_buttons["Next Round"].setEnabled(False)
+                mark_game_finished()
 
     control_buttons["Next Round"].clicked.connect(next_round_action)
 
     # ----------------------------
     # Bottom tools row
     # ----------------------------
-    bottom = QWidget()
-    b_layout2 = QHBoxLayout(bottom)
-    b_layout2.setContentsMargins(0, 0, 0, 0)
-    b_layout2.setSpacing(12)
-
-    steal = QPushButton("Steal Points")
+    steal = QPushButton("Steal Attempt")
     steal.setCursor(Qt.PointingHandCursor)
+    steal.setToolTip("When a team reaches 3 strikes, the opposing team may attempt a steal")
     steal.setStyleSheet("""
         QPushButton {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #3B82F6, stop:1 #0EA5E9);
-            color: white;
-            border: none;
+            background: none;
+            color: #E2E8F0;
+            border: 1px solid rgba(125, 211, 252, 0.35);
             border-radius: 16px;
             padding: 12px 20px;
             font-size: 13px;
             font-weight: 800;
         }
         QPushButton:hover {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #60A5FA, stop:1 #38BDF8);
+            background: rgba(125, 211, 252, 0.10);
+            border: 1px solid rgba(125, 211, 252, 0.55);
         }
     """)
     make_shadow(steal, blur=14, color=QColor(10, 132, 255, 100), y=5)
 
-    add_edit = QPushButton("Add/Edit Q&A")
-    add_edit.setCursor(Qt.PointingHandCursor)
-    add_edit.setStyleSheet("""
-        QPushButton {
-            background: transparent;
-            color: #E2E8F0;
-            border: 1px solid rgba(255,255,255,0.10);
-            border-radius: 16px;
-            padding: 12px 18px;
-            font-size: 13px;
-            font-weight: 700;
-        }
-        QPushButton:hover {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(96,165,250,0.28);
-        }
-    """)
-
-    b_layout2.addWidget(steal)
-    b_layout2.addStretch()
-    b_layout2.addWidget(add_edit)
-    layout.addWidget(bottom)
+    def update_steal_button_state():
+        locked_out_team = page.game_state.get("locked_out_team")
+        steal_used = page.game_state.get("steal_used", False)
+        can_steal = (locked_out_team in (0, 1)) and (not steal_used)
+        steal.setEnabled(can_steal)
 
     def steal_from_bottom():
-        dlg = QDialog(page)
-        dlg.setModal(True)
-        dlg.setWindowTitle("Steal Points")
-        dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-        dlg.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
-        dlg.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
-        dlg.setWindowFlag(Qt.WindowCloseButtonHint, False)
-        dlg.setWindowFlag(Qt.FramelessWindowHint, True)
-        dlg.setStyleSheet(game_modal.STYLE)
-
-        dlg_layout = QVBoxLayout(dlg)
-        dlg_layout.setContentsMargins(12, 12, 12, 12)
-        dlg_layout.setSpacing(8)
-
-        header_row = QHBoxLayout()
-        title_label = QLabel("Steal Points")
-        title_label.setObjectName("headerTitle")
-        header_row.addWidget(title_label)
-        header_row.addStretch()
-        dlg_layout.addLayout(header_row)
-
-        dlg_layout.addWidget(QLabel("Points to award:"))
-        points_input = QLineEdit()
-        points_input.setPlaceholderText("Enter number of points")
-        points_input.setValidator(QIntValidator(0, 100000, points_input))
-        dlg_layout.addWidget(points_input)
-
-        btns = QHBoxLayout()
-        ta_btn = QPushButton(page.game_state["teams"][0]["name"])
-        tb_btn = QPushButton(page.game_state["teams"][1]["name"])
-        cancel_btn = QPushButton("Cancel")
-
-        ta_btn.setCursor(Qt.PointingHandCursor)
-        tb_btn.setCursor(Qt.PointingHandCursor)
-        cancel_btn.setCursor(Qt.PointingHandCursor)
-
-        btns.addStretch()
-        btns.addWidget(ta_btn)
-        btns.addWidget(tb_btn)
-        btns.addWidget(cancel_btn)
-        btns.addStretch()
-        dlg_layout.addLayout(btns)
-
-        def _award_to(team_idx: int):
-            txt = points_input.text().strip()
-            if not txt:
-                QMessageBox.information(dlg, "Invalid", "Please enter a number of points to award.")
-                return
-            try:
-                pts = int(txt)
-            except Exception:
-                QMessageBox.information(dlg, "Invalid", "Please enter a valid integer.")
-                return
-
-            opponent_idx = 1 - team_idx
-            opponent_score = page.game_state["teams"][opponent_idx]["score"]
-            if pts > opponent_score:
-                QMessageBox.information(
-                    dlg,
-                    "Invalid",
-                    "Cannot steal more points than the opposing team currently has."
-                )
-                return
-
-            page.game_state["teams"][team_idx]["score"] += pts
-            page.game_state["teams"][opponent_idx]["score"] -= pts
-            update_team_panels()
-            dlg.accept()
-
-        ta_btn.clicked.connect(lambda: _award_to(0))
-        tb_btn.clicked.connect(lambda: _award_to(1))
-        cancel_btn.clicked.connect(dlg.reject)
-
-        dlg.setMinimumWidth(420)
-        dlg.adjustSize()
-        points_input.setFocus()
-        dlg.exec()
+        locked_out_team = page.game_state.get("locked_out_team")
+        if locked_out_team not in (0, 1):
+            QMessageBox.information(
+                page,
+                "Steal",
+                "Steal is only available after a team reaches 3 strikes."
+            )
+            return
+        steal_attempt(1 - locked_out_team)
 
     steal.clicked.connect(steal_from_bottom)
+    update_steal_button_state()
 
     # ----------------------------
     # Navigation row
     # ----------------------------
-    nav = QWidget()
-    n_layout = QHBoxLayout(nav)
-    n_layout.setContentsMargins(0, 0, 0, 0)
-    n_layout.setSpacing(12)
-    n_layout.addStretch()
-
     back_btn = QPushButton("Back to Board")
     back_btn.setCursor(Qt.PointingHandCursor)
+    back_btn.setToolTip("Return to the home board")
     back_btn.setStyleSheet("""
         QPushButton {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #4F46E5, stop:1 #0EA5E9);
-            color: white;
-            border: none;
+            background: none;
+            color: #E2E8F0;
+            border: 1px solid rgba(125, 211, 252, 0.35);
             border-radius: 16px;
             padding: 12px 22px;
             font-size: 13px;
             font-weight: 800;
         }
         QPushButton:hover {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #6366F1, stop:1 #38BDF8);
+            background: rgba(125, 211, 252, 0.10);
+            border: 1px solid rgba(125, 211, 252, 0.55);
         }
     """)
 
     display_btn = QPushButton("Display Game")
     display_btn.setCursor(Qt.PointingHandCursor)
+    display_btn.setToolTip("Open the presentation display")
     display_btn.setStyleSheet("""
         QPushButton {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #10B981, stop:1 #22C55E);
-            color: white;
-            border: none;
+            background: none;
+            color: #E2E8F0;
+            border: 1px solid rgba(125, 211, 252, 0.35);
             border-radius: 16px;
             padding: 12px 22px;
             font-size: 13px;
             font-weight: 900;
         }
         QPushButton:hover {
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #34D399, stop:1 #4ADE80);
+            background: rgba(125, 211, 252, 0.10);
+            border: 1px solid rgba(125, 211, 252, 0.55);
         }
     """)
 
-    back_btn.clicked.connect(app.show_home)
+    def back_to_board_action():
+        try:
+            if modify_game and hasattr(modify_game, "open_modify_game"):
+                modify_game.open_modify_game(app, title or "Family Feud", description or "")
+                return
+        except Exception:
+            pass
+        app.show_home()
+
+    back_btn.clicked.connect(back_to_board_action)
     display_btn.clicked.connect(lambda t=title, d=description: display_game.open_display_game(app, t or "", d or ""))
 
-    n_layout.addWidget(back_btn)
-    n_layout.addWidget(display_btn)
-    layout.addWidget(nav)
+    top_actions.addWidget(back_btn)
+    top_actions.addWidget(display_btn)
+    top_actions.addWidget(next_btn)
+    top_actions.addWidget(steal)
+    layout.addWidget(top)
+    layout.addWidget(cheat_sheet)
 
     def _get_current_round_data():
         return page.game_state.get("current_round")

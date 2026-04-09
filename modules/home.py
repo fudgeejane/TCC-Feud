@@ -1,16 +1,11 @@
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-    QMenu,
-    QScrollArea,
-    QGraphicsDropShadowEffect,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QHBoxLayout,
+    QScrollArea, QGraphicsDropShadowEffect, QDialog, QTextEdit, QLineEdit
 )
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QColor
 from pathlib import Path
+from typing import Callable, Optional
 
 try:
     import utils.game_modal as game_modal
@@ -22,16 +17,198 @@ try:
 except Exception:
     modify_game = None
 
-# optional DB persistence
 try:
     import database.db as db
 except Exception:
     db = None
 
+def open_edit_modal(parent, title: str, description: str, on_save: Optional[Callable[[dict], None]] = None):
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("Edit Game")
+    dlg.setModal(True)
+
+    dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+    dlg.setWindowFlag(Qt.FramelessWindowHint, True)
+
+    dlg.setStyleSheet("""
+    QDialog {
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        background: #071033;
+    }
+    QLabel {
+        color: #e6eef8;
+        font-size: 11pt;
+    }
+    QLabel#headerTitle {
+        font-weight: 700;
+        font-size: 12pt;
+    }
+    QLineEdit, QTextEdit {
+        padding: 8px;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #071033;
+        border: none;
+    }
+    QLineEdit:focus, QTextEdit:focus {
+        border: 2px solid #0a84ff;
+    }
+    QPushButton {
+        border-radius: 6px;
+        padding: 6px 12px;
+    }
+    QPushButton#createBtn {
+        background: #0b7d2a;
+        color: white;
+        font-weight: 600;
+    }
+    QPushButton#createBtn:hover {
+        background: #0a6d24;
+    }
+    QPushButton#cancelBtn {
+        background: #eef2f7;
+        color: #0f172a;
+    }
+    QPushButton#dangerBtn {
+        background: #b91c1c;
+        color: white;
+    }
+    """)
+
+    layout = QVBoxLayout(dlg)
+    layout.setContentsMargins(12, 12, 12, 12)
+
+    header = QHBoxLayout()
+    title_lbl = QLabel("Edit Game")
+    title_lbl.setObjectName("headerTitle")
+    header.addWidget(title_lbl)
+    header.addStretch()
+    layout.addLayout(header)
+
+    layout.addWidget(QLabel("Title"))
+    title_entry = QLineEdit()
+    title_entry.setText(title)
+    layout.addWidget(title_entry)
+
+    layout.addWidget(QLabel("Description (optional)"))
+    desc = QTextEdit()
+    desc.setPlainText(description or "")
+    desc.setFixedHeight(120)
+    layout.addWidget(desc)
+
+    btns = QHBoxLayout()
+    cancel_btn = QPushButton("Cancel")
+    save_btn = QPushButton("Save")
+    save_btn.setObjectName("createBtn")
+    cancel_btn.setObjectName("cancelBtn")
+    cancel_btn.setFixedHeight(30)
+    save_btn.setFixedHeight(30)
+    btns.addWidget(cancel_btn)
+    btns.addWidget(save_btn)
+    layout.addLayout(btns)
+
+    def on_save_click():
+        t = title_entry.text().strip()
+        d = desc.toPlainText().strip()
+        if not t:
+            err = QDialog(dlg)
+            err.setWindowTitle("Validation")
+            l = QVBoxLayout(err)
+            l.addWidget(QLabel("Please enter a title."))
+            okb = QPushButton("OK")
+            okb.setObjectName("okBtn")
+            okb.clicked.connect(err.accept)
+            l.addWidget(okb)
+            err.exec()
+            return
+        payload = {"title": t, "description": d}
+        dlg.accept()
+        if on_save:
+            on_save(payload)
+
+    save_btn.clicked.connect(on_save_click)
+    cancel_btn.clicked.connect(dlg.reject)
+
+    dlg.setMinimumWidth(460)
+    dlg.adjustSize()
+    dlg.exec()
+
+def open_delete_confirm(parent, on_confirm: Optional[Callable[[], None]] = None):
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("Delete Confirmation")
+    dlg.setModal(True)
+    dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+    dlg.setWindowFlag(Qt.FramelessWindowHint, True)
+
+    dlg.setStyleSheet("""
+    QDialog {
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 8px;
+        background: #071033;
+    }
+    QLabel {
+        color: #e6eef8;
+        font-size: 11pt;
+    }
+    QLabel#headerTitle {
+        font-weight: 700;
+        font-size: 12pt;
+    }
+    QPushButton {
+        border-radius: 6px;
+        padding: 6px 12px;
+    }
+    QPushButton#createBtn {
+        background: #0b7d2a;
+        color: white;
+        font-weight: 600;
+    }
+    QPushButton#cancelBtn {
+        background: #eef2f7;
+        color: #0f172a;
+    }
+    QPushButton#dangerBtn {
+        background: #b91c1c;
+        color: white;
+    }
+    """)
+
+    layout = QVBoxLayout(dlg)
+    layout.setContentsMargins(16, 12, 16, 12)
+    msg = QLabel("Are you sure you want to delete this game?")
+    msg.setAlignment(Qt.AlignCenter)
+    msg.setWordWrap(True)
+    msg.setStyleSheet("color: #e6eef8; font-weight:600; padding:6px 12px;")
+    layout.addWidget(msg)
+
+    btns = QHBoxLayout()
+    btns.setSpacing(10)
+    cancel_btn = QPushButton("Cancel")
+    del_btn = QPushButton("Delete")
+    del_btn.setObjectName("dangerBtn")
+    cancel_btn.setObjectName("cancelBtn")
+    cancel_btn.setFixedHeight(32)
+    del_btn.setFixedHeight(32)
+    btns.addStretch()
+    btns.addWidget(cancel_btn)
+    btns.addWidget(del_btn)
+    btns.addStretch()
+    layout.addLayout(btns)
+
+    def _on_del():
+        dlg.accept()
+        if on_confirm:
+            on_confirm()
+
+    del_btn.clicked.connect(_on_del)
+    cancel_btn.clicked.connect(dlg.reject)
+
+    dlg.setMinimumWidth(380)
+    dlg.adjustSize()
+    dlg.exec()
 
 def build_home(parent: QWidget, app):
-    """Construct the home UI inside `parent` for a PySide6-based UI."""
-
     # Clear old layout/widgets
     try:
         old_layout = parent.layout()
@@ -47,10 +224,10 @@ def build_home(parent: QWidget, app):
     parent.setStyleSheet("""
         QWidget {
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #020617,
-                stop:0.35 #07172F,
-                stop:1 #040D1F);
-            color: #E5E7EB;
+                stop:0 #02050E,
+                stop:0.45 #08213D,
+                stop:1 #0B1220);
+            color: #E2E8F0;
             font-family: Segoe UI, Arial, sans-serif;
         }
     """)
@@ -60,19 +237,16 @@ def build_home(parent: QWidget, app):
     layout.setSpacing(22)
     layout.setAlignment(Qt.AlignTop)
 
-    # -----------------------------
     # Header
-    # -----------------------------
     header = QWidget()
     header.setStyleSheet("""
         QWidget {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(96,165,250,0.18);
-            border-radius: 24px;
+            background: transparent;
+            border: none;
         }
     """)
     header_layout = QHBoxLayout(header)
-    header_layout.setContentsMargins(24, 18, 24, 18)
+    header_layout.setContentsMargins(0, 0, 0, 0)
     header_layout.setSpacing(18)
 
     assets_logo = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
@@ -89,6 +263,7 @@ def build_home(parent: QWidget, app):
                 font-size: 34px;
                 font-weight: 800;
                 color: #F8FAFC;
+                background: transparent;
             """)
         header_layout.addWidget(logo_lbl, alignment=Qt.AlignLeft | Qt.AlignVCenter)
     else:
@@ -97,19 +272,16 @@ def build_home(parent: QWidget, app):
             font-size: 34px;
             font-weight: 800;
             color: #F8FAFC;
+            background: transparent;
             letter-spacing: 1px;
         """)
         header_layout.addWidget(title, alignment=Qt.AlignLeft | Qt.AlignVCenter)
 
     header_layout.addStretch()
 
-    subtitle = QLabel("Create, manage, and launch your Family Feud games")
-    subtitle.setStyleSheet("""
-        color: #CBD5E1;
-        font-size: 14px;
-        font-weight: 500;
-    """)
-    header_layout.addWidget(subtitle, alignment=Qt.AlignVCenter)
+    
+
+
 
     def on_game_created(payload):
         try:
@@ -169,9 +341,7 @@ def build_home(parent: QWidget, app):
     header_layout.addWidget(create_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
     layout.addWidget(header)
 
-    # -----------------------------
     # Section heading
-    # -----------------------------
     section_wrap = QWidget()
     section_wrap.setStyleSheet("""
         QWidget {
@@ -179,29 +349,12 @@ def build_home(parent: QWidget, app):
         }
     """)
     section_layout = QVBoxLayout(section_wrap)
-    section_layout.setContentsMargins(22, 20, 22, 20)
-    section_layout.setSpacing(6)
+    section_layout.setContentsMargins(0, 0, 0, 0)
+    section_layout.setSpacing(0)
 
-    section_title = QLabel("Your Games")
-    section_title.setStyleSheet("""
-        font-size: 22px;
-        font-weight: 800;
-        color: #F8FAFC;
-    """)
-
-    section_desc = QLabel("Select a game card to view, modify, or play.")
-    section_desc.setStyleSheet("""
-        font-size: 13px;
-        color: #94A3B8;
-    """)
-
-    section_layout.addWidget(section_title)
-    section_layout.addWidget(section_desc)
     layout.addWidget(section_wrap)
 
-    # -----------------------------
     # Scrollable cards area
-    # -----------------------------
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -212,17 +365,18 @@ def build_home(parent: QWidget, app):
             background: transparent;
         }
         QScrollBar:horizontal {
-            background: transparent;
+            background: rgba(15, 23, 42, 0.45);
             height: 10px;
             margin: 0px 24px 0px 24px;
+            border-radius: 5px;
         }
         QScrollBar::handle:horizontal {
-            background: #334155;
+            background: #0ea5e9;
             border-radius: 5px;
             min-width: 30px;
         }
         QScrollBar::handle:horizontal:hover {
-            background: #475569;
+            background: #38bdf8;
         }
         QScrollBar::add-line:horizontal,
         QScrollBar::sub-line:horizontal {
@@ -232,15 +386,15 @@ def build_home(parent: QWidget, app):
     """)
 
     cards_container = QWidget()
+    cards_container.setStyleSheet("background: transparent;")
     cards_layout = QHBoxLayout(cards_container)
-    cards_layout.setSpacing(24)
-    cards_layout.setContentsMargins(6, 8, 6, 18)
+    cards_layout.setSpacing(20)
+    cards_layout.setContentsMargins(6, 2, 6, 20)
     cards_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
     scroll.setWidget(cards_container)
     layout.addWidget(scroll)
 
-    # Ensure app.games exists
     if not hasattr(app, "games"):
         if db:
             try:
@@ -271,8 +425,9 @@ def build_home(parent: QWidget, app):
             empty_card.setFixedSize(380, 200)
             empty_card.setStyleSheet("""
                 QWidget {
-                    background-color: #0F172A;
-                    border: none;
+                    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                        stop:0 rgba(15,23,42,0.96), stop:1 rgba(6,17,40,0.96));
+                    border: 1px solid rgba(125, 211, 252, 0.18);
                     border-radius: 18px;
                 }
             """)
@@ -282,12 +437,12 @@ def build_home(parent: QWidget, app):
             ec_layout.setContentsMargins(24, 24, 24, 24)
             ec_layout.setSpacing(10)
 
-            empty_title = QLabel("🎮 No games yet")
+            empty_title = QLabel("No games yet")
             empty_title.setAlignment(Qt.AlignCenter)
             empty_title.setStyleSheet("""
                 font-size: 22px;
                 font-weight: 800;
-                color: #F8FAFC;
+                color: #F0F9FF;
             """)
 
             empty_desc = QLabel("Create your first game to start building your Family Feud experience.")
@@ -295,7 +450,7 @@ def build_home(parent: QWidget, app):
             empty_desc.setAlignment(Qt.AlignCenter)
             empty_desc.setStyleSheet("""
                 font-size: 14px;
-                color: #94A3B8;
+                color: #A5B4C7;
             """)
 
             ec_layout.addStretch()
@@ -310,31 +465,38 @@ def build_home(parent: QWidget, app):
         for idx, game in enumerate(app.games):
             title_text = game.get("title", "(no title)")
             desc_text = game.get("description", "")
+            tip_desc = desc_text.strip() if isinstance(desc_text, str) else ""
+            if not tip_desc:
+                tip_desc = "No description provided."
+            tooltip_text = f"Game {idx + 1}\nName: {title_text}\nDescription: {tip_desc}"
 
             card = QWidget()
-            card.setFixedSize(320, 228)
+            card.setObjectName("gameCard")
+            card.setFixedSize(336, 236)
             card.setCursor(Qt.PointingHandCursor)
+            card.setToolTip(tooltip_text)
             card.setStyleSheet("""
-                QWidget {
+                QWidget#gameCard {
                     background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                        stop:0 rgba(15,23,42,0.95), stop:1 rgba(13,30,63,0.96));
-                    border: none;
+                        stop:0 rgba(15,23,42,0.95), stop:1 rgba(10,24,52,0.96));
+                    border: 1px solid rgba(125, 211, 252, 0.16);
                     border-radius: 20px;
                 }
-                QWidget:hover {
+                QWidget#gameCard:hover {
                     background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                        stop:0 rgba(37,99,235,0.15), stop:1 rgba(15,23,42,0.95));
+                        stop:0 rgba(14,165,233,0.14), stop:1 rgba(15,23,42,0.96));
+                    border: 1px solid rgba(125, 211, 252, 0.38);
                 }
             """)
             create_shadow(card)
 
             c_layout = QVBoxLayout(card)
-            c_layout.setContentsMargins(18, 18, 18, 16)
-            c_layout.setSpacing(12)
+            c_layout.setContentsMargins(18, 16, 18, 16)
+            c_layout.setSpacing(10)
 
             # Top row
             top = QWidget()
-            top.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            top.setAttribute(Qt.WA_TransparentForMouseEvents, False)
             top_l = QHBoxLayout(top)
             top_l.setContentsMargins(0, 0, 0, 0)
             top_l.setSpacing(10)
@@ -343,9 +505,10 @@ def build_home(parent: QWidget, app):
             badge.setFixedHeight(24)
             badge.setAlignment(Qt.AlignCenter)
             badge.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            badge.setToolTip(tooltip_text)
             badge.setStyleSheet("""
-                background-color: rgba(37,99,235,0.18);
-                color: #93C5FD;
+                background-color: rgba(14,165,233,0.18);
+                color: #7DD3FC;
                 border-radius: 10px;
                 padding: 0 10px;
                 font-size: 11px;
@@ -356,28 +519,51 @@ def build_home(parent: QWidget, app):
 
             top_l.addStretch()
 
-            menu_btn = QPushButton("⋮")
-            menu_btn.setFixedSize(34, 34)
-            menu_btn.setCursor(Qt.PointingHandCursor)
-            menu_btn.setFocusPolicy(Qt.NoFocus)
-            menu_btn.setToolTip("More actions")
-            menu_btn.setStyleSheet("""
+            # Edit and Delete buttons
+            edit_btn = QPushButton("Edit")
+            edit_btn.setFixedSize(60, 28)
+            edit_btn.setCursor(Qt.PointingHandCursor)
+            edit_btn.setToolTip(f"Edit {title_text}")
+            edit_btn.setStyleSheet("""
                 QPushButton {
-                    background: transparent;
-                    color: #E2E8F0;
+                    background: rgba(14,165,233,0.2);
+                    color: #BAE6FD;
                     border: none;
                     border-radius: 10px;
-                    font-size: 18px;
+                    font-size: 11px;
                     font-weight: 700;
                 }
                 QPushButton:hover {
-                    background: rgba(255,255,255,0.06);
+                    background: rgba(14,165,233,0.34);
                 }
                 QPushButton:pressed {
-                    background: rgba(255,255,255,0.10);
+                    background: rgba(14,165,233,0.45);
                 }
             """)
-            top_l.addWidget(menu_btn)
+
+            delete_btn = QPushButton("Delete")
+            delete_btn.setFixedSize(60, 28)
+            delete_btn.setCursor(Qt.PointingHandCursor)
+            delete_btn.setToolTip(f"Delete {title_text}")
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background: rgba(244,63,94,0.18);
+                    color: #fda4af;
+                    border: none;
+                    border-radius: 10px;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+                QPushButton:hover {
+                    background: rgba(244,63,94,0.28);
+                }
+                QPushButton:pressed {
+                    background: rgba(244,63,94,0.38);
+                }
+            """)
+
+            top_l.addWidget(edit_btn)
+            top_l.addWidget(delete_btn)
 
             c_layout.addWidget(top)
 
@@ -385,9 +571,10 @@ def build_home(parent: QWidget, app):
             title_lbl = QLabel(title_text)
             title_lbl.setWordWrap(True)
             title_lbl.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            title_lbl.setToolTip(tooltip_text)
             title_lbl.setStyleSheet("""
                 font-weight: 800;
-                font-size: 20px;
+                font-size: 19px;
                 color: #F8FAFC;
             """)
             c_layout.addWidget(title_lbl)
@@ -396,8 +583,9 @@ def build_home(parent: QWidget, app):
             desc = QLabel(desc_text if desc_text.strip() else "No description provided.")
             desc.setWordWrap(True)
             desc.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            desc.setToolTip(tooltip_text)
             desc.setStyleSheet("""
-                color: #94A3B8;
+                color: #B8C4D6;
                 font-size: 13px;
                 line-height: 1.4;
             """)
@@ -406,48 +594,24 @@ def build_home(parent: QWidget, app):
             c_layout.addStretch()
 
             # Footer
-            footer = QLabel("Click card to open, edit, or play")
+            footer = QLabel("Click card to open game details")
             footer.setAlignment(Qt.AlignCenter)
             footer.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            footer.setToolTip(tooltip_text)
             footer.setStyleSheet("""
-                color: #60A5FA;
+                color: #7DD3FC;
                 font-size: 12px;
                 font-weight: 600;
                 padding-top: 6px;
             """)
             c_layout.addWidget(footer)
 
-            # Menu
-            menu = QMenu()
-            menu.setWindowFlags(menu.windowFlags() | Qt.NoDropShadowWindowHint)
-            menu.setStyleSheet("""
-                QMenu {
-                    background: #0B1220;
-                    color: #E2E8F0;
-                    border: none;
-                    border-radius: 10px;
-                    padding: 6px 0px;
-                }
-                QMenu::item {
-                    padding: 9px 20px;
-                }
-                QMenu::item:selected {
-                    background: rgba(59,130,246,0.16);
-                }
-            """)
-
-            edit_action = menu.addAction("Edit")
-            delete_action = menu.addAction("Delete")
-
-            def on_edit_triggered(checked=False, i=idx):
+            def on_edit_click(i=idx):
                 try:
-                    if game_modal and hasattr(game_modal, "open_edit_modal"):
+                    if hasattr(app, "games") and i < len(app.games):
                         def _on_save(payload):
                             app.games[i]["title"] = payload.get("title", app.games[i]["title"])
-                            app.games[i]["description"] = payload.get(
-                                "description",
-                                app.games[i].get("description", "")
-                            )
+                            app.games[i]["description"] = payload.get("description", app.games[i].get("description", ""))
                             try:
                                 if db:
                                     db.save_games(app.games)
@@ -455,24 +619,26 @@ def build_home(parent: QWidget, app):
                                 pass
                             render_cards()
 
-                        game_modal.open_edit_modal(
-                            app,
-                            app.games[i].get("title", ""),
-                            app.games[i].get("description", ""),
-                            on_save=_on_save
-                        )
-                        return
-                except Exception:
-                    pass
+                        if game_modal and hasattr(game_modal, "open_edit_modal"):
+                            game_modal.open_edit_modal(
+                                parent,
+                                app.games[i].get("title", ""),
+                                app.games[i].get("description", ""),
+                                on_save=_on_save
+                            )
+                        else:
+                            open_edit_modal(
+                                parent,
+                                app.games[i].get("title", ""),
+                                app.games[i].get("description", ""),
+                                on_save=_on_save
+                            )
+                except Exception as e:
+                    print(f"Error opening edit modal: {e}")
 
+            def on_delete_click(i=idx):
                 try:
-                    app.show_static_modal("Edit", f"Edit {app.games[i].get('title', '')}")
-                except Exception:
-                    pass
-
-            def on_delete_triggered(checked=False, i=idx):
-                try:
-                    if game_modal and hasattr(game_modal, "open_delete_confirm"):
+                    if hasattr(app, "games") and i < len(app.games):
                         def _on_confirm():
                             try:
                                 del app.games[i]
@@ -485,30 +651,15 @@ def build_home(parent: QWidget, app):
                                 pass
                             render_cards()
 
-                        game_modal.open_delete_confirm(app, on_confirm=_on_confirm)
-                        return
-                except Exception:
-                    pass
+                        if game_modal and hasattr(game_modal, "open_delete_confirm"):
+                            game_modal.open_delete_confirm(parent, on_confirm=_on_confirm)
+                        else:
+                            open_delete_confirm(parent, on_confirm=_on_confirm)
+                except Exception as e:
+                    print(f"Error opening delete confirm: {e}")
 
-                try:
-                    del app.games[i]
-                except Exception:
-                    pass
-                try:
-                    if db:
-                        db.save_games(app.games)
-                except Exception:
-                    pass
-                render_cards()
-
-            edit_action.triggered.connect(on_edit_triggered)
-            delete_action.triggered.connect(on_delete_triggered)
-
-            def _open_menu(i=idx, btn=menu_btn, m=menu):
-                pos = btn.mapToGlobal(QPoint(btn.width() - m.sizeHint().width(), btn.height()))
-                m.exec(pos)
-
-            menu_btn.clicked.connect(_open_menu)
+            edit_btn.clicked.connect(on_edit_click)
+            delete_btn.clicked.connect(on_delete_click)
 
             def _on_card_click(event, i=idx):
                 try:

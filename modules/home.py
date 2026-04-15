@@ -13,6 +13,16 @@ except Exception:
     game_modal = None
 
 try:
+    import utils.teams_modal as teams_modal
+except Exception:
+    teams_modal = None
+
+try:
+    import modules.leaderboards as leaderboards
+except Exception:
+    leaderboards = None
+
+try:
     import modules.modify_game as modify_game
 except Exception:
     modify_game = None
@@ -232,10 +242,17 @@ def build_home(parent: QWidget, app):
         }
     """)
 
-    layout = QVBoxLayout(parent)
-    layout.setContentsMargins(60, 30, 60, 30)
-    layout.setSpacing(22)
-    layout.setAlignment(Qt.AlignTop)
+    layout = QHBoxLayout(parent)
+    layout.setContentsMargins(30, 30, 30, 30)
+    layout.setSpacing(30)
+
+    # Left side: Header and Games
+    left_widget = QWidget()
+    left_widget.setStyleSheet("background: transparent;")
+    left_layout = QVBoxLayout(left_widget)
+    left_layout.setContentsMargins(0, 0, 0, 0)
+    left_layout.setSpacing(30)
+    left_layout.setAlignment(Qt.AlignTop)
 
     # Header
     header = QWidget()
@@ -279,9 +296,7 @@ def build_home(parent: QWidget, app):
 
     header_layout.addStretch()
 
-    
-
-
+    left_layout.addWidget(header)
 
     def on_game_created(payload):
         try:
@@ -309,6 +324,146 @@ def build_home(parent: QWidget, app):
             except Exception:
                 pass
 
+    def on_team_created(payload):
+        try:
+            if not hasattr(app, "teams"):
+                app.teams = []
+
+            app.teams.append({
+                "name": payload.get("name", "(no name)"),
+                "score": payload.get("score", 0)
+            })
+
+            try:
+                if db:
+                    db.save_teams(app.teams)
+            except Exception:
+                pass
+
+            try:
+                if hasattr(app, "render_leaderboard"):
+                    app.render_leaderboard()
+            except Exception:
+                pass
+        except Exception:
+            try:
+                app.show_static_modal("Team Created", payload.get("name", "(no name)"))
+            except Exception:
+                pass
+
+    # Teams Button
+    add_teams_btn = QPushButton("＋ Add Teams")
+    add_teams_btn.setCursor(Qt.PointingHandCursor)
+    add_teams_btn.setFixedHeight(48)
+    add_teams_btn.setStyleSheet("""
+        QPushButton {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #9333EA, stop:1 #D946EF);
+            color: #F8FAFC;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            padding: 0 22px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #A855F7, stop:1 #E879F9);
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #7E22CE, stop:1 #9333EA);
+        }
+    """)
+    try:
+        if teams_modal:
+            add_teams_btn.clicked.connect(lambda: teams_modal.open_add_team_modal(app, on_create=on_team_created))
+    except Exception:
+        pass
+
+    # View Teams Button
+    view_teams_btn = QPushButton("📋 Teams List")
+    view_teams_btn.setCursor(Qt.PointingHandCursor)
+    view_teams_btn.setFixedHeight(48)
+    view_teams_btn.setStyleSheet("""
+        QPushButton {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #0891B2, stop:1 #06B6D4);
+            color: #F8FAFC;
+            border: none;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            padding: 0 22px;
+        }
+        QPushButton:hover {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #0E7490, stop:1 #155E75);
+        }
+        QPushButton:pressed {
+            background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+                stop:0 #0D9488, stop:1 #0F766E);
+        }
+    """)
+    def on_view_teams_click():
+        try:
+            if not hasattr(app, "teams"):
+                if db:
+                    app.teams = db.load_teams()
+                else:
+                    app.teams = []
+
+            def on_edit(idx):
+                team = app.teams[idx]
+                def _on_save(payload):
+                    app.teams[idx] = {
+                        "name": payload.get("name", app.teams[idx]["name"]),
+                        "score": payload.get("score", app.teams[idx]["score"])
+                    }
+                    try:
+                        if db:
+                            db.save_teams(app.teams)
+                    except Exception:
+                        pass
+                    try:
+                        if hasattr(app, "render_leaderboard"):
+                            app.render_leaderboard()
+                    except Exception:
+                        pass
+                    on_view_teams_click()
+
+                if teams_modal:
+                    teams_modal.open_edit_team_modal(app, team["name"], team["score"], on_save=_on_save)
+
+            def on_delete(idx):
+                team = app.teams[idx]
+                def _on_confirm():
+                    try:
+                        del app.teams[idx]
+                    except Exception:
+                        pass
+                    try:
+                        if db:
+                            db.save_teams(app.teams)
+                    except Exception:
+                        pass
+                    try:
+                        if hasattr(app, "render_leaderboard"):
+                            app.render_leaderboard()
+                    except Exception:
+                        pass
+
+                if teams_modal:
+                    teams_modal.open_delete_team_confirm(app, team["name"], on_confirm=_on_confirm)
+
+            if teams_modal:
+                teams_modal.open_teams_list_modal(app, app.teams, on_edit=on_edit, on_delete=on_delete)
+        except Exception as e:
+            print(f"Error viewing teams: {e}")
+
+    view_teams_btn.clicked.connect(on_view_teams_click)
+
+    # Create Game Button
     create_btn = QPushButton("＋ Create Game")
     create_btn.setCursor(Qt.PointingHandCursor)
     create_btn.setFixedHeight(48)
@@ -338,21 +493,17 @@ def build_home(parent: QWidget, app):
     except Exception:
         pass
 
+    header_layout.addWidget(add_teams_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
+    header_layout.addWidget(view_teams_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
     header_layout.addWidget(create_btn, alignment=Qt.AlignRight | Qt.AlignVCenter)
-    layout.addWidget(header)
 
-    # Section heading
-    section_wrap = QWidget()
-    section_wrap.setStyleSheet("""
-        QWidget {
-            background: transparent;
-        }
-    """)
-    section_layout = QVBoxLayout(section_wrap)
-    section_layout.setContentsMargins(0, 0, 0, 0)
-    section_layout.setSpacing(0)
-
-    layout.addWidget(section_wrap)
+    # ========== LEFT SIDE: GAMES ==========
+    games_widget = QWidget()
+    games_widget.setStyleSheet("background: transparent;")
+    games_layout = QVBoxLayout(games_widget)
+    games_layout.setContentsMargins(0, 0, 0, 0)
+    games_layout.setSpacing(0)
+    games_layout.setAlignment(Qt.AlignTop)
 
     # Scrollable cards area
     scroll = QScrollArea()
@@ -389,11 +540,23 @@ def build_home(parent: QWidget, app):
     cards_container.setStyleSheet("background: transparent;")
     cards_layout = QHBoxLayout(cards_container)
     cards_layout.setSpacing(20)
-    cards_layout.setContentsMargins(6, 2, 6, 20)
+    cards_layout.setContentsMargins(6, 20, 6, 20)
     cards_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
     scroll.setWidget(cards_container)
-    layout.addWidget(scroll)
+    games_layout.addWidget(scroll)
+
+    left_layout.addWidget(games_widget, stretch=1)
+    left_widget.setMaximumWidth(800)
+    layout.addWidget(left_widget)
+
+    # ========== RIGHT SIDE: LEADERBOARD ==========
+    leaderboard_widget = None
+    if leaderboards:
+        leaderboard_widget = leaderboards.create_leaderboard_section(parent, app)
+
+    if leaderboard_widget:
+        layout.addWidget(leaderboard_widget, stretch=1)
 
     if not hasattr(app, "games"):
         if db:
@@ -404,6 +567,16 @@ def build_home(parent: QWidget, app):
                 app.games = []
         else:
             app.games = []
+
+    if not hasattr(app, "teams"):
+        if db:
+            try:
+                loaded = db.load_teams()
+                app.teams = loaded if isinstance(loaded, list) else []
+            except Exception:
+                app.teams = []
+        else:
+            app.teams = []
 
     def create_shadow(widget):
         shadow = QGraphicsDropShadowEffect()

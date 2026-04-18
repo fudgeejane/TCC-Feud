@@ -53,10 +53,7 @@ def open_add_team_modal(parent, on_create: Optional[Callable[[dict], None]] = No
 
 def open_select_teams_modal(parent, on_select: Optional[Callable[[List[dict]], None]] = None, selected_indices: Optional[List[int]] = None, max_select: int = 2):
     """Open a modal for selecting two saved teams for the current game."""
-    if selected_indices is None:
-        selected_indices = []
-
-    selected_indices = set(selected_indices)
+    selected_indices = set()
     teams = db.load_teams() if db else []
 
     dlg = QDialog(parent)
@@ -175,7 +172,8 @@ def open_select_teams_modal(parent, on_select: Optional[Callable[[List[dict]], N
             checkbox.setChecked(index in selected_indices)
 
             def _on_state(state, idx=index):
-                if state == Qt.Checked:
+                # stateChanged emits a plain int: 2 = checked, 0 = unchecked
+                if state == 2:
                     selected_indices.add(idx)
                 else:
                     selected_indices.discard(idx)
@@ -212,10 +210,6 @@ def open_select_teams_modal(parent, on_select: Optional[Callable[[List[dict]], N
 
         open_add_team_modal(parent, on_create=_on_create)
 
-    add_btn.clicked.connect(add_new_team)
-    save_btn.clicked.connect(lambda: _on_save())
-    cancel_btn.clicked.connect(dlg.reject)
-
     def _on_save():
         if len(selected_indices) != max_select:
             return
@@ -223,6 +217,10 @@ def open_select_teams_modal(parent, on_select: Optional[Callable[[List[dict]], N
         dlg.accept()
         if on_select:
             on_select(chosen)
+
+    add_btn.clicked.connect(add_new_team)
+    save_btn.clicked.connect(_on_save)
+    cancel_btn.clicked.connect(dlg.reject)
 
     refresh_team_list()
     update_save_state()

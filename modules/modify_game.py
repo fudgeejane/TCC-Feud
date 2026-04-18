@@ -232,16 +232,19 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     h_layout.addStretch()
 
     game_number = None
+    game_idx_for_play = 0
     try:
         if hasattr(app, "games") and isinstance(app.games, list):
             for index, game in enumerate(app.games):
                 if game.get("id") == game_id or game.get("title") == title:
                     game_number = index + 1
+                    game_idx_for_play = index
                     break
             if game_number is None:
                 for index, game in enumerate(app.games):
                     if game.get("title") == title:
                         game_number = index + 1
+                        game_idx_for_play = index
                         break
     except Exception:
         pass
@@ -258,15 +261,10 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     _apply_button_style(play_btn, "success")
     play_btn.setCursor(Qt.PointingHandCursor)
 
-    def _on_play(t=title, d=description):
+    def _on_play(t=title, d=description, gidx=game_idx_for_play):
         try:
             if play_game and hasattr(play_game, "open_play_game"):
-                # open Play view and load the first question from the DB for this game
-                try:
-                    play_game.open_play_game(app, t, d, load_db_first=True)
-                except TypeError:
-                    # fallback if older signature
-                    play_game.open_play_game(app, t, d)
+                play_game.open_play_game(app, t, d, load_db_first=True, game_idx=gidx)
                 return
         except Exception:
             pass
@@ -448,13 +446,8 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
 
         target_game = _ensure_target_game()
         current_game_teams = target_game.get("teams", [])
-        selected_indices = []
 
-        for idx, saved in enumerate(all_teams):
-            for current in current_game_teams:
-                if saved.get("name") == current.get("name") and saved.get("members") == current.get("members"):
-                    selected_indices.append(idx)
-                    break
+        selected_indices = []
 
         def _on_select(chosen_teams):
             target_game["teams"] = [

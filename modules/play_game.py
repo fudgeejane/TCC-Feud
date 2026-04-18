@@ -35,13 +35,21 @@ except Exception:
     modify_game = None
 
 
-def open_play_game(app, title: str, description: str, load_db_first: bool = False):
+def open_play_game(app, title: str, description: str, load_db_first: bool = False, game_idx: int = 0):
     """Open the Play Game page in the app.stack."""
 
+    # Always rebuild the play page so team assignments and game state are fresh.
     try:
         if hasattr(app, "play_widget") and app.play_widget is not None:
-            app.stack.setCurrentWidget(app.play_widget)
-            return
+            try:
+                app.stack.removeWidget(app.play_widget)
+            except Exception:
+                pass
+            try:
+                app.play_widget.deleteLater()
+            except Exception:
+                pass
+            app.play_widget = None
     except Exception:
         pass
 
@@ -513,7 +521,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         "current_round": None,
         "current_round_number": 1,
         "total_rounds": len(sample_rounds),
-        "game_idx": 0,
+        "game_idx": game_idx,
         "question_idx": 0,
         "answers_widgets": [],
         "revealed_answer_indices": [],
@@ -963,20 +971,30 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             page.game_state["teams"][i]["members"] = [(str(members[j]) if j < len(members) else "") for j in range(4)]
 
     def load_first_db_round():
-        r = get_db_round(game_idx=0, question_idx=0)
+        r = get_db_round(game_idx=game_idx, question_idx=0)
         if r is None:
-            QMessageBox.warning(page, "No Games", "No game found in database/games.json")
+            # Game exists but has no questions — show an empty state on the board
+            header.setText("No questions have been added to this game yet.")
+            round_badge.setText("NO QUESTIONS")
+            try:
+                games = db.load_games()
+                apply_teams(get_db_teams(game_idx=game_idx))
+            except Exception:
+                pass
+            update_team_panels()
+            _update_answering_buttons()
+            control_buttons.get("Next Round") and control_buttons["Next Round"].setEnabled(False)
             return
         try:
             games = db.load_games()
-            questions = games[0].get("questions", []) if games and len(games) > 0 else []
+            questions = games[game_idx].get("questions", []) if games and len(games) > game_idx else []
             page.game_state["total_rounds"] = max(1, len(questions))
         except Exception:
             page.game_state["total_rounds"] = 1
-        page.game_state["game_idx"] = 0
+        page.game_state["game_idx"] = game_idx
         page.game_state["question_idx"] = 0
         try:
-            apply_teams(get_db_teams(game_idx=0))
+            apply_teams(get_db_teams(game_idx=game_idx))
         except Exception:
             pass
         load_round(r, from_db=True)
@@ -1435,6 +1453,17 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
     app.play_widget = page
 
+    # Add to stack FIRST so the page is visible before any loading or dialogs fire.
+    try:
+        app.stack.addWidget(page)
+        app.stack.setCurrentWidget(page)
+    except Exception:
+        try:
+            app.show_static_modal("Play", "Could not open play page.")
+        except Exception:
+            pass
+        return
+
     if load_db_first:
         try:
             load_first_db_round()
@@ -1443,14 +1472,5 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     else:
         try:
             load_round(sample_rounds[0], from_db=False)
-        except Exception:
-            pass
-
-    try:
-        app.stack.addWidget(page)
-        app.stack.setCurrentWidget(page)
-    except Exception:
-        try:
-            app.show_static_modal("Play", "Could not open play page.")
         except Exception:
             pass

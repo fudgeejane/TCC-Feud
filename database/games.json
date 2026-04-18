@@ -89,21 +89,21 @@
     ],
     "teams": [
       {
-        "name": "Block A",
-        "members": [
-          "Bro",
-          "Chi",
-          "Lei",
-          "Lev"
-        ]
-      },
-      {
         "name": "Block B",
         "members": [
           "Chang",
           "Dion",
           "Monde",
           "Pads"
+        ]
+      },
+      {
+        "name": "Powerpuff Girls",
+        "members": [
+          "Blossom",
+          "Buttercup",
+          "Bubbles",
+          "Mojojojo"
         ]
       }
     ]
@@ -114,23 +114,23 @@
     "description": "team vs. team",
     "questions": [
       {
-        "question": "fcgfg",
+        "question": "parte ng katawan ng tao na nagsisimula sa T",
         "fast_money": false,
         "answers": [
           {
-            "text": "fvhgf",
+            "text": "talampakan",
             "score": 50
           },
           {
-            "text": "fgd",
+            "text": "tuhod",
             "score": 40
           },
           {
-            "text": "fgfd",
+            "text": "tiyan",
             "score": 20
           },
           {
-            "text": "gfdg",
+            "text": "tainga",
             "score": 10
           },
           {
@@ -198,21 +198,21 @@
     ],
     "teams": [
       {
-        "name": "Block A",
+        "name": "Dream Team",
         "members": [
-          "Bro",
-          "Chi",
           "Lei",
-          "Lev"
+          "Edmon",
+          "Dion",
+          "Kinggian"
         ]
       },
       {
-        "name": "Block B",
+        "name": "Power Rangers",
         "members": [
-          "Chang",
-          "Dion",
-          "Monde",
-          "Pads"
+          "Yellow",
+          "Red",
+          "Blue",
+          "Green"
         ]
       }
     ]

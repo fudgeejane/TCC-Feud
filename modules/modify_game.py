@@ -14,6 +14,16 @@ try:
 except Exception:
     play_game = None
 
+try:
+    import utils.addteam_modal as addteam_modal
+except Exception:
+    addteam_modal = None
+
+try:
+    import database.db as db
+except Exception:
+    db = None
+
 
 def _apply_button_style(button: QPushButton, role: str) -> None:
     styles = {
@@ -144,18 +154,17 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     This view is static (placeholder) but provides Back and Save actions.
     """
     try:
-        # Reuse existing modify page if previously created
+        # Discard any previously built modify page so the current game loads fresh.
         if hasattr(app, "modify_widget") and app.modify_widget is not None:
             try:
-                app.modify_title_label.setText(title or "(Untitled Game)")
+                app.stack.removeWidget(app.modify_widget)
             except Exception:
                 pass
             try:
-                app.modify_desc_label.setText(description or "No description provided")
+                app.modify_widget.deleteLater()
             except Exception:
                 pass
-            app.stack.setCurrentWidget(app.modify_widget)
-            return
+            app.modify_widget = None
     except Exception:
         pass
 
@@ -303,21 +312,45 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         if not hasattr(app, "games") or not isinstance(app.games, list):
             app.games = []
 
+        # Ensure all existing games have IDs
+        for g in app.games:
+            if not g.get("id"):
+                g["id"] = uuid.uuid4().hex
+            # Ensure questions and teams arrays exist
+            if "questions" not in g:
+                g["questions"] = []
+            if "teams" not in g:
+                g["teams"] = []
+
         gid = getattr(app, "current_game_id", None)
         target_game = None
 
+        # First, try to find by ID
         if gid:
             for g in app.games:
                 if g.get("id") == gid:
                     target_game = g
                     break
 
+        # If not found by ID, try by title only if we have a current_game_id hint
+        # This prevents accidentally matching the wrong game
+        if not target_game and gid:
+            for g in app.games:
+                if g.get("title") == title:
+                    # Only match if this game has no questions yet OR has the matching ID
+                    if not g.get("questions") or g.get("id") == gid:
+                        target_game = g
+                        break
+
+        # Last resort: find by title only if this is the first time
+        # (no current_game_id set yet and title matches)
         if not target_game:
             for g in app.games:
                 if g.get("title") == title:
                     target_game = g
                     break
 
+        # Create new game if still not found
         if not target_game:
             target_game = {
                 "title": title or "(Untitled Game)",
@@ -352,7 +385,7 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     teams_actions.setContentsMargins(0, 0, 0, 0)
     teams_actions.addStretch()
 
-    edit_teams_btn = QPushButton("Edit Teams")
+    edit_teams_btn = QPushButton("Select Teams")
     edit_teams_btn.setFixedHeight(42)
     _apply_button_style(edit_teams_btn, "secondary")
     edit_teams_btn.setCursor(Qt.PointingHandCursor)
@@ -371,6 +404,29 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         if not isinstance(teams, list):
             teams = []
 
+        if not teams and db:
+            try:
+                saved_teams = db.load_teams()
+                if isinstance(saved_teams, list) and saved_teams:
+                    teams = []
+                    for idx, saved_team in enumerate(saved_teams[:2]):
+                        members = saved_team.get("members", [])
+                        if not isinstance(members, list):
+                            members = []
+                        padded_members = (members + ["", "", "", ""])[:4]
+                        teams.append({
+                            "name": saved_team.get("name", f"Team {chr(ord('A') + idx)}"),
+                            "members": padded_members,
+                        })
+                    target_game["teams"] = teams
+                    if db:
+                        try:
+                            db.save_games(app.games)
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
         if len(teams) < 2:
             while len(teams) < 2:
                 default_name = f"Team {chr(ord('A') + len(teams))}"
@@ -385,163 +441,42 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         return teams
 
     def _open_teams_modal():
-        teams = _load_teams_data()
+        try:
+            all_teams = db.load_teams() if db else []
+        except Exception:
+            all_teams = []
 
-        dlg = QDialog(page)
-        dlg.setWindowTitle("Edit Teams")
-        dlg.setModal(True)
-        dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-        dlg.setStyleSheet("""
-            QDialog {
-                background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                    stop:0 #071327, stop:1 #0B1F3F);
-                border: 1px solid rgba(125, 211, 252, 0.30);
-                border-radius: 18px;
-            }
-            QLabel#teamsModalTitle {
-                color: #F8FAFC;
-                font-size: 18px;
-                font-weight: 900;
-                background: transparent;
-            }
-            QLabel#teamsModalHint {
-                color: #B8D7F5;
-                font-size: 11px;
-                font-weight: 600;
-                background: transparent;
-            }
-            QLineEdit {
-                background: rgba(2, 6, 23, 0.45);
-            }
-        """)
-        dlg_layout = QVBoxLayout(dlg)
-        dlg_layout.setContentsMargins(18, 16, 18, 16)
-        dlg_layout.setSpacing(14)
+        target_game = _ensure_target_game()
+        current_game_teams = target_game.get("teams", [])
+        selected_indices = []
 
-        modal_header = QWidget()
-        mh_layout = QVBoxLayout(modal_header)
-        mh_layout.setContentsMargins(0, 0, 0, 0)
-        mh_layout.setSpacing(2)
+        for idx, saved in enumerate(all_teams):
+            for current in current_game_teams:
+                if saved.get("name") == current.get("name") and saved.get("members") == current.get("members"):
+                    selected_indices.append(idx)
+                    break
 
-        modal_title = QLabel("Edit Teams")
-        modal_title.setObjectName("teamsModalTitle")
-        modal_hint = QLabel("Set team names and up to four members per team.")
-        modal_hint.setObjectName("teamsModalHint")
-
-        mh_layout.addWidget(modal_title)
-        mh_layout.addWidget(modal_hint)
-        dlg_layout.addWidget(modal_header)
-
-        row = QHBoxLayout()
-        row.setSpacing(14)
-
-        local_team_name_inputs = []
-        local_team_member_inputs = []
-
-        def _team_card(default_name: str):
-            card = QWidget()
-            card.setStyleSheet("""
-                QWidget {
-                    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                        stop:0 rgba(10, 25, 52, 0.94), stop:1 rgba(19, 45, 92, 0.94));
-                    border: 1px solid rgba(125, 211, 252, 0.24);
-                    border-radius: 16px;
+        def _on_select(chosen_teams):
+            target_game["teams"] = [
+                {
+                    "name": team.get("name", f"Team {idx+1}"),
+                    "members": team.get("members", [])
                 }
-            """)
-            cl = QVBoxLayout(card)
-            cl.setContentsMargins(14, 14, 14, 14)
-            cl.setSpacing(9)
-
-            team_lbl = QLabel(default_name.upper())
-            team_lbl.setStyleSheet("""
-                color: #7DD3FC;
-                font-size: 11px;
-                font-weight: 800;
-                letter-spacing: 1px;
-                background: transparent;
-            """)
-            cl.addWidget(team_lbl)
-
-            name_input = QLineEdit()
-            name_input.setPlaceholderText("Team name")
-            name_input.setText(default_name)
-            name_input.setMinimumHeight(40)
-            name_input.setStyleSheet(f"QLineEdit {{{_field_style(10)}}} QLineEdit:focus {{ border: 1px solid #60A5FA; background: transparent; }}")
-            cl.addWidget(name_input)
-
-            member_inputs = []
-            for idx in range(4):
-                mi = QLineEdit()
-                mi.setPlaceholderText(f"Member {idx + 1}")
-                mi.setMinimumHeight(36)
-                mi.setStyleSheet(f"QLineEdit {{{_field_style(10)}}} QLineEdit:focus {{ border: 1px solid #60A5FA; background: transparent; }}")
-                member_inputs.append(mi)
-                cl.addWidget(mi)
-
-            local_team_name_inputs.append(name_input)
-            local_team_member_inputs.append(member_inputs)
-            return card
-
-        row.addWidget(_team_card("Team A"))
-        row.addWidget(_team_card("Team B"))
-        dlg_layout.addLayout(row)
-
-        for t_idx in range(2):
-            team_data = teams[t_idx] if t_idx < len(teams) and isinstance(teams[t_idx], dict) else {}
-            local_team_name_inputs[t_idx].setText((team_data.get("name") or f"Team {chr(ord('A') + t_idx)}").strip())
-            members = team_data.get("members", [])
-            if not isinstance(members, list):
-                members = []
-            for m_idx in range(4):
-                local_team_member_inputs[t_idx][m_idx].setText(str(members[m_idx] if m_idx < len(members) else ""))
-
-        actions = QHBoxLayout()
-        actions.setContentsMargins(0, 6, 0, 0)
-        actions.setSpacing(10)
-        actions.addStretch()
-        save_btn = QPushButton("Save Teams")
-        _apply_button_style(save_btn, "success")
-        save_btn.setFixedHeight(40)
-        cancel_btn = QPushButton("Cancel")
-        _apply_button_style(cancel_btn, "secondary")
-        cancel_btn.setFixedHeight(40)
-        actions.addWidget(cancel_btn)
-        actions.addWidget(save_btn)
-        dlg_layout.addLayout(actions)
-
-        def _save_and_close():
-            target_game = _ensure_target_game()
-            teams_payload = []
-            for t_idx in range(2):
-                tname = local_team_name_inputs[t_idx].text().strip() or f"Team {chr(ord('A') + t_idx)}"
-                members = [local_team_member_inputs[t_idx][m_idx].text().strip() for m_idx in range(4)]
-                teams_payload.append({"name": tname, "members": members})
-
-            target_game["teams"] = teams_payload
-
-            saved_ok = True
+                for idx, team in enumerate(chosen_teams)
+            ]
             if db:
                 try:
-                    saved_ok = bool(db.save_games(app.games))
+                    db.save_games(app.games)
                 except Exception:
-                    saved_ok = False
-
+                    pass
             if hasattr(app, "render_home_cards"):
                 try:
                     app.render_home_cards()
                 except Exception:
                     pass
 
-            if not saved_ok:
-                QMessageBox.warning(dlg, "Save Failed", "Could not save team data to disk.")
-                return
-
-            dlg.accept()
-
-        save_btn.clicked.connect(_save_and_close)
-        cancel_btn.clicked.connect(dlg.reject)
-        dlg.setMinimumWidth(920)
-        dlg.exec()
+        if addteam_modal:
+            addteam_modal.open_select_teams_modal(page, on_select=_on_select, selected_indices=selected_indices)
 
     _load_teams_data()
     edit_teams_btn.clicked.connect(_open_teams_modal)
@@ -551,7 +486,6 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     scroll.setFrameShape(QFrame.NoFrame)
-    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     scroll.setStyleSheet("""
         QScrollArea {
             background: none;
@@ -1157,11 +1091,13 @@ def open_modify_game(app, title: str, description: str, game_id: str | None = No
         if hasattr(app, "games"):
             gid = getattr(app, "current_game_id", None)
             target_game = None
+            # First, try to find by ID (most reliable)
             if gid:
                 for g in app.games:
-                    if g.get("id") == gid or g.get("title") == title:
+                    if g.get("id") == gid:
                         target_game = g
                         break
+            # Only fall back to title if no ID was provided or not found
             if not target_game:
                 for g in app.games:
                     if g.get("title") == title:

@@ -16,5 +16,32 @@
       "Monde",
       "Pads"
     ]
+  },
+  {
+    "name": "Dream Team",
+    "members": [
+      "Lei",
+      "Edmon",
+      "Dion",
+      "Kinggian"
+    ]
+  },
+  {
+    "name": "Power Rangers",
+    "members": [
+      "Yellow",
+      "Red",
+      "Blue",
+      "Green"
+    ]
+  },
+  {
+    "name": "Powerpuff Girls",
+    "members": [
+      "Blossom",
+      "Buttercup",
+      "Bubbles",
+      "Mojojojo"
+    ]
   }
 ]

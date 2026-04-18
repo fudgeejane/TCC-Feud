@@ -1,31 +1,32 @@
 [
   {
-    "title": "Game 1",
-    "description": "COMSCI STUDENTS",
+    "title": "edref",
+    "description": "edfedf",
+    "id": "dbe4fa3bc1bd490bb54e0fcf18d62188",
     "questions": [
       {
-        "question": "Magbigay ng bagay na laging dala ng ComSci student",
+        "question": "sadfg",
         "fast_money": false,
         "answers": [
           {
-            "text": "Laptop",
-            "score": 30
+            "text": "sdffgh",
+            "score": 40
           },
           {
-            "text": "Charger",
-            "score": 25
+            "text": "dfg",
+            "score": 40
           },
           {
-            "text": "Phone",
-            "score": 20
+            "text": "fd",
+            "score": 40
           },
           {
-            "text": "USB / Flash Drive",
-            "score": 15
+            "text": "fgh",
+            "score": 40
           },
           {
-            "text": "Notebook",
-            "score": 10
+            "text": "",
+            "score": 0
           },
           {
             "text": "",
@@ -40,32 +41,137 @@
             "score": 0
           }
         ],
-        "total": 100,
-        "game_id": null,
-        "id": "ff671934d34c41c29ce8764591ca377e"
+        "total": 160,
+        "game_id": "dbe4fa3bc1bd490bb54e0fcf18d62188",
+        "id": "b07fb0cd830f433e86759e73c5f3b553"
       },
       {
-        "question": "Ano ang dahilan kung bakit late ang  studyante  sa klase?",
+        "question": "dfg",
         "fast_money": false,
         "answers": [
           {
-            "text": "Traffic",
-            "score": 40
-          },
-          {
-            "text": "Oversleep",
+            "text": "gfh",
             "score": 30
           },
           {
-            "text": "Tinatamad",
-            "score": 15
+            "text": "j",
+            "score": 30
           },
           {
-            "text": "Mahaba pila sa sakayan",
+            "text": "gjh",
+            "score": 30
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          }
+        ],
+        "total": 90,
+        "game_id": "dbe4fa3bc1bd490bb54e0fcf18d62188",
+        "id": "9cfa72aa3cb840d2ab605ac996544f20"
+      }
+    ],
+    "teams": [
+      {
+        "name": "Block A",
+        "members": [
+          "Bro",
+          "Chi",
+          "Lei",
+          "Lev"
+        ]
+      },
+      {
+        "name": "Block B",
+        "members": [
+          "Chang",
+          "Dion",
+          "Monde",
+          "Pads"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "904a1eb4da1d4a188e6709b98325df2a",
+    "title": "Game 1",
+    "description": "team vs. team",
+    "questions": [
+      {
+        "question": "fcgfg",
+        "fast_money": false,
+        "answers": [
+          {
+            "text": "fvhgf",
+            "score": 50
+          },
+          {
+            "text": "fgd",
+            "score": 40
+          },
+          {
+            "text": "fgfd",
+            "score": 20
+          },
+          {
+            "text": "gfdg",
             "score": 10
           },
           {
-            "text": "Nakalimutang may pasok",
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
+          }
+        ],
+        "total": 120,
+        "game_id": "904a1eb4da1d4a188e6709b98325df2a",
+        "id": "33b00edc8c504a3e9327fe0abcb7e875"
+      },
+      {
+        "question": "asdfghj",
+        "fast_money": false,
+        "answers": [
+          {
+            "text": "s",
+            "score": 30
+          },
+          {
+            "text": "fgh",
+            "score": 20
+          },
+          {
+            "text": "fghm",
+            "score": 10
+          },
+          {
+            "text": "fdh",
             "score": 5
           },
           {
@@ -79,30 +185,34 @@
           {
             "text": "",
             "score": 0
+          },
+          {
+            "text": "",
+            "score": 0
           }
         ],
-        "total": 100,
-        "game_id": null,
-        "id": "692ea42b0c9544938bd078bbbf50fe51"
+        "total": 65,
+        "game_id": "904a1eb4da1d4a188e6709b98325df2a",
+        "id": "f2ae5c2f5dbd4e9cb57bb0bb3f5eca04"
       }
     ],
     "teams": [
       {
-        "name": "block a",
+        "name": "Block A",
         "members": [
-          "FJ",
-          "FJ",
-          "FJ",
-          "FJ"
+          "Bro",
+          "Chi",
+          "Lei",
+          "Lev"
         ]
       },
       {
-        "name": "block b",
+        "name": "Block B",
         "members": [
-          "FJ",
-          "FJ",
-          "FJ",
-          "FJ"
+          "Chang",
+          "Dion",
+          "Monde",
+          "Pads"
         ]
       }
     ]

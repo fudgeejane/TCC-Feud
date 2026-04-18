@@ -325,12 +325,17 @@ def open_teams_list_modal(parent, teams: list, on_edit: Optional[Callable[[int],
     else:
         for idx, team in enumerate(teams):
             team_card = QWidget()
+            team_card.setObjectName("teamCard")
             team_card.setStyleSheet("""
-                QWidget {
+                QWidget#teamCard {
                     background: rgba(15, 23, 42, 0.7);
                     border: 1px solid rgba(125, 211, 252, 0.18);
                     border-radius: 8px;
                     padding: 10px;
+                }
+                QWidget#teamCard QWidget {
+                    background: transparent;
+                    border: none;
                 }
             """)
             team_card.setFixedHeight(60)

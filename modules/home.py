@@ -18,9 +18,9 @@ except Exception:
     teams_modal = None
 
 try:
-    import modules.leaderboards as leaderboards
+    import utils.addteam_modal as addteam_modal
 except Exception:
-    leaderboards = None
+    addteam_modal = None
 
 try:
     import modules.modify_game as modify_game
@@ -32,6 +32,52 @@ try:
 except Exception:
     db = None
 
+_DIALOG_STYLESHEET = """
+QDialog {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    background: #071033;
+}
+QLabel {
+    color: #e6eef8;
+    font-size: 11pt;
+}
+QLabel#headerTitle {
+    font-weight: 700;
+    font-size: 12pt;
+}
+QLineEdit, QTextEdit {
+    padding: 8px;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #071033;
+    border: none;
+}
+QLineEdit:focus, QTextEdit:focus {
+    border: 2px solid #0a84ff;
+}
+QPushButton {
+    border-radius: 6px;
+    padding: 6px 12px;
+}
+QPushButton#createBtn {
+    background: #0b7d2a;
+    color: white;
+    font-weight: 600;
+}
+QPushButton#createBtn:hover {
+    background: #0a6d24;
+}
+QPushButton#cancelBtn {
+    background: #eef2f7;
+    color: #0f172a;
+}
+QPushButton#dangerBtn {
+    background: #b91c1c;
+    color: white;
+}
+"""
+
 def open_edit_modal(parent, title: str, description: str, on_save: Optional[Callable[[dict], None]] = None):
     dlg = QDialog(parent)
     dlg.setWindowTitle("Edit Game")
@@ -40,51 +86,7 @@ def open_edit_modal(parent, title: str, description: str, on_save: Optional[Call
     dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
     dlg.setWindowFlag(Qt.FramelessWindowHint, True)
 
-    dlg.setStyleSheet("""
-    QDialog {
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 8px;
-        background: #071033;
-    }
-    QLabel {
-        color: #e6eef8;
-        font-size: 11pt;
-    }
-    QLabel#headerTitle {
-        font-weight: 700;
-        font-size: 12pt;
-    }
-    QLineEdit, QTextEdit {
-        padding: 8px;
-        border-radius: 8px;
-        background: #ffffff;
-        color: #071033;
-        border: none;
-    }
-    QLineEdit:focus, QTextEdit:focus {
-        border: 2px solid #0a84ff;
-    }
-    QPushButton {
-        border-radius: 6px;
-        padding: 6px 12px;
-    }
-    QPushButton#createBtn {
-        background: #0b7d2a;
-        color: white;
-        font-weight: 600;
-    }
-    QPushButton#createBtn:hover {
-        background: #0a6d24;
-    }
-    QPushButton#cancelBtn {
-        background: #eef2f7;
-        color: #0f172a;
-    }
-    QPushButton#dangerBtn {
-        background: #b91c1c;
-        color: white;
-    }
-    """)
+    dlg.setStyleSheet(_DIALOG_STYLESHEET)
 
     layout = QVBoxLayout(dlg)
     layout.setContentsMargins(12, 12, 12, 12)
@@ -151,38 +153,7 @@ def open_delete_confirm(parent, on_confirm: Optional[Callable[[], None]] = None)
     dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
     dlg.setWindowFlag(Qt.FramelessWindowHint, True)
 
-    dlg.setStyleSheet("""
-    QDialog {
-        border: 1px solid rgba(255,255,255,0.12);
-        border-radius: 8px;
-        background: #071033;
-    }
-    QLabel {
-        color: #e6eef8;
-        font-size: 11pt;
-    }
-    QLabel#headerTitle {
-        font-weight: 700;
-        font-size: 12pt;
-    }
-    QPushButton {
-        border-radius: 6px;
-        padding: 6px 12px;
-    }
-    QPushButton#createBtn {
-        background: #0b7d2a;
-        color: white;
-        font-weight: 600;
-    }
-    QPushButton#cancelBtn {
-        background: #eef2f7;
-        color: #0f172a;
-    }
-    QPushButton#dangerBtn {
-        background: #b91c1c;
-        color: white;
-    }
-    """)
+    dlg.setStyleSheet(_DIALOG_STYLESHEET)
 
     layout = QVBoxLayout(dlg)
     layout.setContentsMargins(16, 12, 16, 12)
@@ -243,8 +214,8 @@ def build_home(parent: QWidget, app):
     """)
 
     layout = QHBoxLayout(parent)
-    layout.setContentsMargins(30, 30, 30, 30)
-    layout.setSpacing(30)
+    layout.setContentsMargins(24, 24, 24, 24)
+    layout.setSpacing(0)
 
     # Left side: Header and Games
     left_widget = QWidget()
@@ -268,6 +239,17 @@ def build_home(parent: QWidget, app):
 
     assets_logo = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
 
+    def _make_title_label():
+        lbl = QLabel("TCC Feud")
+        lbl.setStyleSheet("""
+            font-size: 34px;
+            font-weight: 800;
+            color: #F8FAFC;
+            background: transparent;
+            letter-spacing: 1px;
+        """)
+        return lbl
+
     if assets_logo.exists():
         logo_lbl = QLabel()
         pix = QPixmap(str(assets_logo))
@@ -275,24 +257,10 @@ def build_home(parent: QWidget, app):
             pix = pix.scaledToWidth(280, Qt.SmoothTransformation)
             logo_lbl.setPixmap(pix)
         else:
-            logo_lbl.setText("TCC Feud")
-            logo_lbl.setStyleSheet("""
-                font-size: 34px;
-                font-weight: 800;
-                color: #F8FAFC;
-                background: transparent;
-            """)
+            logo_lbl = _make_title_label()
         header_layout.addWidget(logo_lbl, alignment=Qt.AlignLeft | Qt.AlignVCenter)
     else:
-        title = QLabel("TCC Feud")
-        title.setStyleSheet("""
-            font-size: 34px;
-            font-weight: 800;
-            color: #F8FAFC;
-            background: transparent;
-            letter-spacing: 1px;
-        """)
-        header_layout.addWidget(title, alignment=Qt.AlignLeft | Qt.AlignVCenter)
+        header_layout.addWidget(_make_title_label(), alignment=Qt.AlignLeft | Qt.AlignVCenter)
 
     header_layout.addStretch()
 
@@ -303,9 +271,13 @@ def build_home(parent: QWidget, app):
             if not hasattr(app, "games"):
                 app.games = []
 
+            import uuid
             app.games.append({
+                "id": uuid.uuid4().hex,
                 "title": payload.get("title", "(no title)"),
-                "description": payload.get("description", "")
+                "description": payload.get("description", ""),
+                "questions": [],
+                "teams": []
             })
 
             try:
@@ -331,18 +303,12 @@ def build_home(parent: QWidget, app):
 
             app.teams.append({
                 "name": payload.get("name", "(no name)"),
-                "score": payload.get("score", 0)
+                "members": payload.get("members", [])
             })
 
             try:
                 if db:
                     db.save_teams(app.teams)
-            except Exception:
-                pass
-
-            try:
-                if hasattr(app, "render_leaderboard"):
-                    app.render_leaderboard()
             except Exception:
                 pass
         except Exception:
@@ -376,8 +342,8 @@ def build_home(parent: QWidget, app):
         }
     """)
     try:
-        if teams_modal:
-            add_teams_btn.clicked.connect(lambda: teams_modal.open_add_team_modal(app, on_create=on_team_created))
+        if addteam_modal:
+            add_teams_btn.clicked.connect(lambda: addteam_modal.open_add_team_modal(app, on_create=on_team_created))
     except Exception:
         pass
 
@@ -407,33 +373,27 @@ def build_home(parent: QWidget, app):
     """)
     def on_view_teams_click():
         try:
-            if not hasattr(app, "teams"):
-                if db:
-                    app.teams = db.load_teams()
-                else:
-                    app.teams = []
+            if db:
+                app.teams = db.load_teams()
+            else:
+                app.teams = []
 
             def on_edit(idx):
                 team = app.teams[idx]
                 def _on_save(payload):
                     app.teams[idx] = {
                         "name": payload.get("name", app.teams[idx]["name"]),
-                        "score": payload.get("score", app.teams[idx]["score"])
+                        "members": payload.get("members", app.teams[idx].get("members", []))
                     }
                     try:
                         if db:
                             db.save_teams(app.teams)
                     except Exception:
                         pass
-                    try:
-                        if hasattr(app, "render_leaderboard"):
-                            app.render_leaderboard()
-                    except Exception:
-                        pass
                     on_view_teams_click()
 
                 if teams_modal:
-                    teams_modal.open_edit_team_modal(app, team["name"], team["score"], on_save=_on_save)
+                    teams_modal.open_edit_team_modal(app, team.get("name", ""), team.get("members", []), on_save=_on_save)
 
             def on_delete(idx):
                 team = app.teams[idx]
@@ -445,11 +405,6 @@ def build_home(parent: QWidget, app):
                     try:
                         if db:
                             db.save_teams(app.teams)
-                    except Exception:
-                        pass
-                    try:
-                        if hasattr(app, "render_leaderboard"):
-                            app.render_leaderboard()
                     except Exception:
                         pass
 
@@ -505,40 +460,40 @@ def build_home(parent: QWidget, app):
     games_layout.setSpacing(0)
     games_layout.setAlignment(Qt.AlignTop)
 
-    # Scrollable cards area
+    # Scrollable cards area — vertical scroll with wrapping cards
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
-    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     scroll.setStyleSheet("""
         QScrollArea {
             border: none;
             background: transparent;
         }
-        QScrollBar:horizontal {
+        QScrollBar:vertical {
             background: rgba(15, 23, 42, 0.45);
-            height: 10px;
-            margin: 0px 24px 0px 24px;
+            width: 10px;
+            margin: 24px 0px 24px 0px;
             border-radius: 5px;
         }
-        QScrollBar::handle:horizontal {
+        QScrollBar::handle:vertical {
             background: #0ea5e9;
             border-radius: 5px;
-            min-width: 30px;
+            min-height: 30px;
         }
-        QScrollBar::handle:horizontal:hover {
+        QScrollBar::handle:vertical:hover {
             background: #38bdf8;
         }
-        QScrollBar::add-line:horizontal,
-        QScrollBar::sub-line:horizontal {
-            width: 0px;
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {
+            height: 0px;
             background: none;
         }
     """)
 
     cards_container = QWidget()
     cards_container.setStyleSheet("background: transparent;")
-    cards_layout = QHBoxLayout(cards_container)
+    cards_layout = QVBoxLayout(cards_container)
     cards_layout.setSpacing(20)
     cards_layout.setContentsMargins(6, 20, 6, 20)
     cards_layout.setAlignment(Qt.AlignLeft | Qt.AlignTop)
@@ -547,16 +502,8 @@ def build_home(parent: QWidget, app):
     games_layout.addWidget(scroll)
 
     left_layout.addWidget(games_widget, stretch=1)
-    left_widget.setMaximumWidth(800)
-    layout.addWidget(left_widget)
-
-    # ========== RIGHT SIDE: LEADERBOARD ==========
-    leaderboard_widget = None
-    if leaderboards:
-        leaderboard_widget = leaderboards.create_leaderboard_section(parent, app)
-
-    if leaderboard_widget:
-        layout.addWidget(leaderboard_widget, stretch=1)
+    left_widget.setMaximumWidth(16777215)  # Remove max width cap — fill full area
+    layout.addWidget(left_widget, stretch=1)
 
     if not hasattr(app, "games"):
         if db:
@@ -567,6 +514,26 @@ def build_home(parent: QWidget, app):
                 app.games = []
         else:
             app.games = []
+    
+    # Ensure all games have unique IDs (migration for old data)
+    try:
+        import uuid
+        for game in app.games:
+            if not game.get("id"):
+                game["id"] = uuid.uuid4().hex
+            # Ensure questions and teams arrays exist
+            if "questions" not in game:
+                game["questions"] = []
+            if "teams" not in game:
+                game["teams"] = []
+        # Save the updated games with IDs
+        if db and any(not game.get("id") for game in app.games):
+            try:
+                db.save_games(app.games)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     if not hasattr(app, "teams"):
         if db:
@@ -634,6 +601,9 @@ def build_home(parent: QWidget, app):
             cards_layout.addWidget(empty_card)
             cards_layout.addStretch()
             return
+
+        CARDS_PER_ROW = 4
+        card_widgets = []
 
         for idx, game in enumerate(app.games):
             title_text = game.get("title", "(no title)")
@@ -840,7 +810,8 @@ def build_home(parent: QWidget, app):
                         modify_game.open_modify_game(
                             app,
                             app.games[i].get("title", ""),
-                            app.games[i].get("description", "")
+                            app.games[i].get("description", ""),
+                            game_id=app.games[i].get("id")
                         )
                         return
                 except Exception as exc:
@@ -855,7 +826,20 @@ def build_home(parent: QWidget, app):
                     pass
 
             card.mousePressEvent = _on_card_click
-            cards_layout.addWidget(card)
+            card_widgets.append(card)
+
+        # Arrange cards into rows for responsive wrapping
+        for row_start in range(0, len(card_widgets), CARDS_PER_ROW):
+            row_widget = QWidget()
+            row_widget.setStyleSheet("background: transparent;")
+            row_layout = QHBoxLayout(row_widget)
+            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setSpacing(20)
+            row_layout.setAlignment(Qt.AlignLeft)
+            for card in card_widgets[row_start:row_start + CARDS_PER_ROW]:
+                row_layout.addWidget(card)
+            row_layout.addStretch()
+            cards_layout.addWidget(row_widget)
 
         cards_layout.addStretch()
 

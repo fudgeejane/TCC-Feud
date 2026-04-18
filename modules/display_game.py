@@ -79,55 +79,10 @@ def open_display_game(app, title: str = "", description: str = ""):
     # -------------------------------------------------
     # TOP HEADER + SCORE AREA
     # -------------------------------------------------
-    title_bar = QFrame()
-    title_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-    title_bar.setStyleSheet(
-        """
-        QFrame {
-            background: none;
-            border: none;
-            border-radius: 18px;
-        }
-    """
-    )
-    make_shadow(title_bar, blur=22, color=QColor(0, 0, 0, 90), y=5)
-
-    title_layout = QHBoxLayout(title_bar)
-    title_layout.setContentsMargins(14,0, 14, 8)
-    title_layout.setSpacing(14)
-
-    show_title = QLabel("DISPLAY GAME")
-    show_title.setAlignment(Qt.AlignCenter)
-    try:
-        logo_path = Path(__file__).resolve().parent.parent / "assets" / "logo.png"
-        if logo_path.exists():
-            logo_pix = QPixmap(str(logo_path))
-            if not logo_pix.isNull():
-                show_title.setPixmap(logo_pix.scaledToWidth(310, Qt.SmoothTransformation))
-    except Exception:
-        pass
-
-    if show_title.text():
-        show_title.setStyleSheet(
-            """
-            color: #F8FAFC;
-            font-size: 28px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            background: transparent;
-        """
-        )
-
-    # Keep placeholders for compatibility with refresh logic; not shown in header.
     round_badge = QLabel("")
     status_badge = QLabel("")
     round_badge.setVisible(False)
     status_badge.setVisible(False)
-
-    title_layout.addStretch(1)
-    title_layout.addWidget(show_title, 0, Qt.AlignCenter)
-    title_layout.addStretch(1)
-    layout.addWidget(title_bar, 0)
 
     top = QWidget()
     top.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -137,36 +92,36 @@ def open_display_game(app, title: str = "", description: str = ""):
 
     def score_block(team_name="TEAM", val="0", accent="#38BDF8"):
         wrap = QWidget()
-        wrap.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        wrap.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         wl = QVBoxLayout(wrap)
         wl.setContentsMargins(0, 0, 0, 0)
         wl.setSpacing(8)
 
         card = QFrame()
-        card.setMinimumHeight(250)
+        card.setMinimumHeight(210)
         card.setStyleSheet(
             f"""
             QFrame {{
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                    stop:0 #0B1F3E, stop:1 #0C2D58);
-                border-radius: 20px;
-                border: 2px solid rgba(125, 211, 252, 0.26);
+                    stop:0 #071832, stop:1 #0B274D);
+                border-radius: 24px;
+                border: 2px solid rgba(245, 158, 11, 0.70);
             }}
         """
         )
-        make_shadow(card, blur=26, color=QColor(0, 0, 0, 100), y=7)
+        make_shadow(card, blur=20, color=QColor(245, 158, 11, 100), y=6)
 
         card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(12, 10, 12, 12)
+        card_layout.setContentsMargins(16, 14, 16, 14)
         card_layout.setSpacing(8)
 
         team_lbl = QLabel(team_name)
         team_lbl.setAlignment(Qt.AlignCenter)
         team_lbl.setStyleSheet(
             """
-            color: #EAF4FF;
-            font-size: 22px;
+            color: #F8FAFC;
+            font-size: 16px;
             font-weight: 900;
             letter-spacing: 1px;
             background: transparent;
@@ -208,18 +163,18 @@ def open_display_game(app, title: str = "", description: str = ""):
         lead_badge.setVisible(False)
 
         score_card = QFrame()
-        score_card.setMinimumHeight(108)
+        score_card.setMinimumHeight(120)
         score_card.setStyleSheet(
             f"""
             QFrame {{
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
                     stop:0 {accent}, stop:1 #2563EB);
-                border-radius: 18px;
-                border: none;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.18);
             }}
         """
         )
-        make_shadow(score_card, blur=22, color=QColor(14, 165, 233, 120), y=5)
+        make_shadow(score_card, blur=18, color=QColor(255, 255, 255, 100), y=4)
 
         score_layout = QVBoxLayout(score_card)
         score_layout.setContentsMargins(0, 0, 0, 0)
@@ -230,7 +185,7 @@ def open_display_game(app, title: str = "", description: str = ""):
             """
             color: white;
             font-weight: 900;
-            font-size: 54px;
+            font-size: 62px;
             background: transparent;
         """
         )
@@ -284,20 +239,20 @@ def open_display_game(app, title: str = "", description: str = ""):
     right_score = score_block("TEAM B", "0", accent="#F97316")
 
     center_small = QFrame()
-    center_small.setMinimumWidth(230)
+    center_small.setMinimumWidth(240)
     center_small.setMaximumWidth(280)
-    center_small.setMinimumHeight(150)
+    center_small.setMinimumHeight(180)
     center_small.setStyleSheet(
         """
         QFrame {
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #2563EB, stop:1 #7C3AED);
-            border: 4px solid #F59E0B;
-            border-radius: 24px;
+                stop:0 #1D3B92, stop:1 #3B1A8F);
+            border: 4px solid #FBBF24;
+            border-radius: 28px;
         }
     """
     )
-    make_shadow(center_small, blur=26, color=QColor(245, 158, 11, 110), y=6)
+    make_shadow(center_small, blur=26, color=QColor(245, 158, 11, 120), y=6)
 
     cs_layout = QVBoxLayout(center_small)
     cs_layout.setContentsMargins(10, 8, 10, 8)
@@ -355,9 +310,9 @@ def open_display_game(app, title: str = "", description: str = ""):
         """
         QFrame {
             background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                stop:0 #071B3A, stop:1 #0B2A5A);
-            border-radius: 30px;
-            border: 5px solid #F59E0B;
+                stop:0 #061328, stop:0.45 #091f3c, stop:1 #081a34);
+            border-radius: 34px;
+            border: 6px solid #FBBF24;
         }
     """
     )
@@ -372,9 +327,9 @@ def open_display_game(app, title: str = "", description: str = ""):
     header.setStyleSheet(
         """
         QFrame {
-            background: none;
-            border-radius: 16px;
-            border: none;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 22px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
         }
     """
     )
@@ -386,9 +341,10 @@ def open_display_game(app, title: str = "", description: str = ""):
     header_label = QLabel("")
     header_label.setStyleSheet(
         """
-        color: white;
+        color: #F8FAFC;
         font-weight: 900;
-        font-size: 30px;
+        font-size: 34px;
+        letter-spacing: 0.8px;
         background: transparent;
     """
     )
@@ -450,10 +406,10 @@ def open_display_game(app, title: str = "", description: str = ""):
             self._rank_lbl.setFixedSize(30, 30)
             self._rank_lbl.setStyleSheet(
                 """
-                background: rgba(14, 165, 233, 0.22);
-                border: 1px solid rgba(125, 211, 252, 0.45);
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(251, 191, 36, 0.45);
                 border-radius: 10px;
-                color: #E0F2FE;
+                color: #F8FAFC;
                 font-size: 13px;
                 font-weight: 900;
             """
@@ -519,9 +475,9 @@ def open_display_game(app, title: str = "", description: str = ""):
                     """
                     QFrame {
                         background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-                            stop:0 #0B3B8C, stop:1 #09245A);
-                        border-radius: 16px;
-                        border: 1px solid rgba(125, 211, 252, 0.25);
+                            stop:0 #071B3D, stop:1 #091A42);
+                        border-radius: 18px;
+                        border: 2px solid rgba(251, 191, 36, 0.90);
                     }
                 """
                 )

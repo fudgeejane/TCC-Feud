@@ -364,21 +364,23 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     a_layout.setContentsMargins(6, 6, 6, 6)
     a_layout.setSpacing(16)
 
-    cheat_sheet = QFrame()
-    cheat_sheet.setStyleSheet("""
+    # -- Answering team selector bar (replaces cheat sheet) --
+    answering_bar = QFrame()
+    answering_bar.setStyleSheet("""
         QFrame {
             background: rgba(2, 12, 28, 0.55);
             border: 1px solid rgba(125, 211, 252, 0.22);
             border-radius: 14px;
         }
     """)
+    answering_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
-    cs_layout = QVBoxLayout(cheat_sheet)
-    cs_layout.setContentsMargins(14, 12, 14, 12)
-    cs_layout.setSpacing(8)
+    ab_layout = QHBoxLayout(answering_bar)
+    ab_layout.setContentsMargins(14, 10, 14, 10)
+    ab_layout.setSpacing(16)
 
-    cs_title = QLabel("GAME MASTER CHEAT SHEET")
-    cs_title.setStyleSheet("""
+    ab_title = QLabel("CURRENTLY ANSWERING:")
+    ab_title.setStyleSheet("""
         color: #7DD3FC;
         font-size: 11px;
         font-weight: 900;
@@ -386,41 +388,92 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         border: none;
         background: transparent;
     """)
-    cs_layout.addWidget(cs_title)
+    ab_layout.addWidget(ab_title)
 
-    cs_rows_widget = QWidget()
-    cs_rows_layout = QHBoxLayout(cs_rows_widget)
-    cs_rows_layout.setContentsMargins(0, 0, 0, 0)
-    cs_rows_layout.setSpacing(20)
+    answering_team_a_btn = QPushButton("Team A")
+    answering_team_b_btn = QPushButton("Team B")
+    answering_steal_btn = QPushButton("⚡ Steal")
 
-    cs_left = QVBoxLayout()
-    cs_left.setContentsMargins(0, 0, 0, 0)
-    cs_left.setSpacing(4)
-
-    cs_right = QVBoxLayout()
-    cs_right.setContentsMargins(0, 0, 0, 0)
-    cs_right.setSpacing(4)
-
-    cheat_sheet_labels = []
-    for i in range(8):
-        row_lbl = QLabel(f"{i + 1}. -")
-        row_lbl.setStyleSheet("""
-            color: #E2E8F0;
+    _answering_btn_base = """
+        QPushButton {{
+            background: {bg};
+            color: {fg};
+            border: 2px solid {border};
+            border-radius: 10px;
+            padding: 6px 18px;
             font-size: 12px;
-            font-weight: 700;
-            border: none;
-            background: transparent;
-        """)
-        cheat_sheet_labels.append(row_lbl)
-        if i < 4:
-            cs_left.addWidget(row_lbl)
-        else:
-            cs_right.addWidget(row_lbl)
+            font-weight: 800;
+        }}
+        QPushButton:hover {{
+            background: {hover};
+            border-color: {hover_border};
+        }}
+    """
 
-    cs_rows_layout.addLayout(cs_left)
-    cs_rows_layout.addLayout(cs_right)
-    cs_layout.addWidget(cs_rows_widget)
-    cheat_sheet.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    def _answering_btn_style(active: bool, color: str = "#0EA5E9"):
+        if active:
+            return _answering_btn_base.format(
+                bg=color, fg="white",
+                border=color, hover=color, hover_border=color
+            )
+        return _answering_btn_base.format(
+            bg="rgba(255,255,255,0.04)", fg="#94A3B8",
+            border="rgba(125,211,252,0.18)", hover="rgba(125,211,252,0.10)", hover_border="rgba(125,211,252,0.35)"
+        )
+
+    def _update_answering_buttons():
+        ctrl = page.game_state.get("current_control_team")
+        names = [t["name"] for t in page.game_state["teams"]]
+        answering_team_a_btn.setText(names[0])
+        answering_team_b_btn.setText(names[1])
+        answering_team_a_btn.setStyleSheet(_answering_btn_style(ctrl == 0, "#0EA5E9"))
+        answering_team_b_btn.setStyleSheet(_answering_btn_style(ctrl == 1, "#10B981"))
+        # Steal button: enabled only when a team is locked out and steal not yet used
+        locked_out = page.game_state.get("locked_out_team")
+        steal_used = page.game_state.get("steal_used", False)
+        can_steal = (locked_out in (0, 1)) and (not steal_used)
+        answering_steal_btn.setEnabled(can_steal)
+        steal_active = (ctrl == "steal")
+        answering_steal_btn.setStyleSheet(_answering_btn_style(steal_active, "#F59E0B"))
+
+    answering_team_a_btn.setCursor(Qt.PointingHandCursor)
+    answering_team_b_btn.setCursor(Qt.PointingHandCursor)
+    answering_steal_btn.setCursor(Qt.PointingHandCursor)
+
+    def _set_answering_team(idx):
+        """Set which team is currently answering; scores will auto-award to them."""
+        page.game_state["current_control_team"] = idx
+        _update_answering_buttons()
+        sync_audience_display()
+
+    def _trigger_steal_from_bar():
+        """Trigger the steal attempt from the answering bar for the opposing team."""
+        locked_out_team = page.game_state.get("locked_out_team")
+        if locked_out_team not in (0, 1):
+            show_info_modal("Steal", "Steal is only available after a team reaches 3 strikes.")
+            return
+        if page.game_state.get("steal_used", False):
+            show_info_modal("Steal", "Steal was already used this round.")
+            return
+        steal_attempt(1 - locked_out_team)
+
+    answering_team_a_btn.clicked.connect(lambda: _set_answering_team(0))
+    answering_team_b_btn.clicked.connect(lambda: _set_answering_team(1))
+    answering_steal_btn.clicked.connect(_trigger_steal_from_bar)
+
+    ab_layout.addWidget(answering_team_a_btn)
+    ab_layout.addWidget(answering_team_b_btn)
+    ab_layout.addWidget(answering_steal_btn)
+    ab_layout.addStretch()
+
+    ab_hint = QLabel("Select the answering team to auto-award points. Use ⚡ Steal when a team hits 3 strikes.")
+    ab_hint.setStyleSheet("""
+        color: rgba(148, 163, 184, 0.7);
+        font-size: 10px;
+        border: none;
+        background: transparent;
+    """)
+    ab_layout.addWidget(ab_hint)
 
     sample_rounds = [
         {
@@ -566,15 +619,16 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 self._stack = QStackedLayout(self._content)
                 self._stack.setContentsMargins(0, 0, 0, 0)
 
-                self.front = QLabel("CLICK TO REVEAL" if self._active else "—")
+                # Front shows the answer text always; back is the "revealed" highlighted state
+                self.front = QLabel(self._answer_text if self._active else "—")
                 self.front.setAlignment(Qt.AlignCenter)
+                self.front.setWordWrap(True)
                 self.front.setStyleSheet("""
                     background: transparent;
                     border: none;
                     color: #BAE6FD;
-                    font-weight: 900;
-                    font-size: 14px;
-                    letter-spacing: 1px;
+                    font-weight: 800;
+                    font-size: 15px;
                 """ if self._active else """
                     background: transparent;
                     border: none;
@@ -582,6 +636,27 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                     font-weight: 800;
                     font-size: 22px;
                 """)
+
+                # Front wrapper: answer text + subtle "click to reveal" hint below
+                front_container = QWidget()
+                front_container.setStyleSheet("background: transparent; border: none;")
+                fc_layout = QVBoxLayout(front_container)
+                fc_layout.setContentsMargins(0, 2, 0, 2)
+                fc_layout.setSpacing(2)
+                fc_layout.setAlignment(Qt.AlignCenter)
+                fc_layout.addWidget(self.front)
+                if self._active:
+                    hint_lbl = QLabel("CLICK TO REVEAL")
+                    hint_lbl.setAlignment(Qt.AlignCenter)
+                    hint_lbl.setStyleSheet("""
+                        background: transparent;
+                        border: none;
+                        color: rgba(125, 211, 252, 0.45);
+                        font-size: 9px;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                    """)
+                    fc_layout.addWidget(hint_lbl)
 
                 self.back = QLabel(self._answer_text)
                 self.back.setAlignment(Qt.AlignCenter)
@@ -594,9 +669,9 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                     font-size: 17px;
                 """)
 
-                self._stack.addWidget(self.front)
+                self._stack.addWidget(front_container)
                 self._stack.addWidget(self.back)
-                self._stack.setCurrentWidget(self.front)
+                self._stack.setCurrentWidget(front_container)
 
                 self._pts_lbl = QLabel(str(self._answer_pts))
                 self._pts_lbl.setAlignment(Qt.AlignCenter)
@@ -636,6 +711,23 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
             def mousePressEvent(self, event):
                 if not self._active or self._revealed or self._consumed:
+                    return
+                # Block reveal if no answering team is selected (and not locked-out/fast-money)
+                ctrl = page.game_state.get("current_control_team")
+                locked_out = page.game_state.get("locked_out_team")
+                fast_money = page.game_state.get("fast_money", False)
+                auto_team = locked_out in (0, 1) or fast_money
+                if ctrl not in (0, 1) and not auto_team:
+                    self.setToolTip("Select an answering team first!")
+                    try:
+                        from PySide6.QtWidgets import QToolTip
+                        QToolTip.showText(
+                            self.mapToGlobal(self.rect().center()),
+                            "⚠ Select an answering team first!",
+                            self
+                        )
+                    except Exception:
+                        pass
                     return
                 self._consumed = True
                 self.setCursor(Qt.ArrowCursor)
@@ -792,7 +884,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         header.setText(round_data["question"])
         update_team_panels()
         build_answer_boxes()
-        update_cheat_sheet()
+        _update_answering_buttons()
         try:
             update_next_button_state()
         except Exception:
@@ -890,108 +982,39 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         load_round(r, from_db=True)
 
     def award_to_team_dialog(points: int):
-        class _RequiredTeamDialog(QDialog):
-            def reject(self):
-                # Prevent Esc/reject to enforce explicit team selection.
-                return
-
-        def choose_team_idx(window_title: str, message: str):
-            dlg = _RequiredTeamDialog(page)
-            dlg.setModal(True)
-            dlg.setWindowTitle(window_title)
-            dlg.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
-            dlg.setWindowFlag(Qt.WindowMinimizeButtonHint, False)
-            dlg.setWindowFlag(Qt.WindowMaximizeButtonHint, False)
-            dlg.setWindowFlag(Qt.WindowCloseButtonHint, False)
-            dlg.setWindowFlag(Qt.FramelessWindowHint, True)
-            dlg.setStyleSheet(game_modal.STYLE)
-
-            dlg_layout = QVBoxLayout(dlg)
-            dlg_layout.setContentsMargins(12, 12, 12, 12)
-            dlg_layout.setSpacing(10)
-
-            title_label = QLabel(window_title)
-            title_label.setObjectName("headerTitle")
-            title_label.setStyleSheet("background: none;")
-            dlg_layout.addWidget(title_label)
-
-            message_label = QLabel(message)
-            message_label.setWordWrap(True)
-            message_label.setStyleSheet("background: none;")
-            dlg_layout.addWidget(message_label)
-
-            btns = QHBoxLayout()
-            ta_btn = QPushButton(page.game_state["teams"][0]["name"])
-            tb_btn = QPushButton(page.game_state["teams"][1]["name"])
-            ta_btn.setCursor(Qt.PointingHandCursor)
-            tb_btn.setCursor(Qt.PointingHandCursor)
-            btns.addStretch()
-            btns.addWidget(ta_btn)
-            btns.addWidget(tb_btn)
-            btns.addStretch()
-            dlg_layout.addLayout(btns)
-
-            selected = {"idx": None}
-
-            def _choose(idx: int):
-                selected["idx"] = idx
-                dlg.accept()
-
-            ta_btn.clicked.connect(lambda: _choose(0))
-            tb_btn.clicked.connect(lambda: _choose(1))
-
-            dlg.setMinimumWidth(420)
-            dlg.adjustSize()
-            dlg.exec()
-
-            if selected["idx"] in (0, 1):
-                return selected["idx"]
-            return 0
-
+        """Award points to the currently selected answering team. No dialog shown."""
+        # Fast money: use fast_money_team (already set when round started)
         if page.game_state.get("fast_money", False):
             team_idx = page.game_state.get("fast_money_team")
-            if team_idx is None:
-                team_idx = choose_team_idx(
-                    "Fast Money Team",
-                    "Select which team is playing Fast Money before awarding points."
-                )
-                page.game_state["fast_money_team"] = team_idx
-
+            if team_idx not in (0, 1):
+                team_idx = page.game_state.get("current_control_team", 0)
             page.game_state["teams"][team_idx]["score"] += points
             page.game_state["round_points"][team_idx] += points
             page.game_state["current_control_team"] = team_idx
+            _update_answering_buttons()
             update_team_panels()
-            QMessageBox.information(
-                page,
-                "Fast Money",
-                f"{page.game_state['teams'][team_idx]['name']} earns {points} points in Fast Money."
-            )
             sync_audience_display()
             return
 
+        # Locked-out: opposing team auto-receives
         locked_out_team = page.game_state.get("locked_out_team")
         if locked_out_team in (0, 1):
             team_idx = 1 - locked_out_team
             page.game_state["teams"][team_idx]["score"] += points
             page.game_state["round_points"][team_idx] += points
             page.game_state["current_control_team"] = team_idx
+            _update_answering_buttons()
             update_team_panels()
-            QMessageBox.information(
-                page,
-                "Locked Out",
-                f"{page.game_state['teams'][locked_out_team]['name']} is locked out for this round. "
-                f"{points} points were awarded to {page.game_state['teams'][team_idx]['name']}."
-            )
             sync_audience_display()
             return
 
-        chosen_idx = choose_team_idx(
-            "Award Points",
-            f"Which team receives {points} points?"
-        )
-        page.game_state["teams"][chosen_idx]["score"] += points
-        page.game_state["round_points"][chosen_idx] += points
-        page.game_state["current_control_team"] = chosen_idx
+        # Normal: use whichever team is selected in the answering bar
+        team_idx = page.game_state.get("current_control_team")
+        if team_idx not in (0, 1):
+            return  # No team selected — reveal was already blocked in mousePressEvent
+        page.game_state["teams"][team_idx]["score"] += points
+        page.game_state["round_points"][team_idx] += points
+        _update_answering_buttons()
         update_team_panels()
         sync_audience_display()
 
@@ -1099,23 +1122,6 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         ok = dlg.exec() == QDialog.Accepted
         return selected["text"], ok
 
-    def update_cheat_sheet():
-        current = page.game_state.get("current_round") or {}
-        answers_data = current.get("answers", []) if isinstance(current, dict) else []
-        for i, row_lbl in enumerate(cheat_sheet_labels):
-            if i < len(answers_data):
-                text, pts = answers_data[i]
-                text_clean = str(text).strip() if text is not None else ""
-                if not text_clean:
-                    text_clean = ""
-                try:
-                    pts_value = int(pts or 0)
-                except Exception:
-                    pts_value = 0
-                row_lbl.setText(f"{i + 1}. {text_clean} ({pts_value})")
-            else:
-                row_lbl.setText(f"{i + 1}. -")
-
     def update_team_panels():
         team_a_panel._score_lbl.setText(str(page.game_state["teams"][0]["score"]))
         team_b_panel._score_lbl.setText(str(page.game_state["teams"][1]["score"]))
@@ -1135,6 +1141,10 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
             sx.setVisible(i < page.game_state["teams"][0]["strikes"])
         for i, sx in enumerate(team_b_panel._strike_labels):
             sx.setVisible(i < page.game_state["teams"][1]["strikes"])
+        try:
+            _update_answering_buttons()
+        except Exception:
+            pass
 
     def rename_team(idx):
         text, ok = QInputDialog.getText(
@@ -1169,7 +1179,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
                 button_text="Start Steal"
             )
             try:
-                update_steal_button_state()
+                _update_answering_buttons()
             except Exception:
                 pass
             if start_steal_clicked:
@@ -1249,7 +1259,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
 
             update_team_panels()
             try:
-                update_steal_button_state()
+                _update_answering_buttons()
             except Exception:
                 pass
             sync_audience_display()
@@ -1263,7 +1273,7 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
         else:
             page.game_state["steal_used"] = True
             try:
-                update_steal_button_state()
+                _update_answering_buttons()
             except Exception:
                 pass
             sync_audience_display()
@@ -1351,49 +1361,6 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     control_buttons["Next Round"].clicked.connect(next_round_action)
 
     # ----------------------------
-    # Bottom tools row
-    # ----------------------------
-    steal = QPushButton("Steal Attempt")
-    steal.setCursor(Qt.PointingHandCursor)
-    steal.setToolTip("When a team reaches 3 strikes, the opposing team may attempt a steal")
-    steal.setStyleSheet("""
-        QPushButton {
-            background: none;
-            color: #E2E8F0;
-            border: 1px solid rgba(125, 211, 252, 0.35);
-            border-radius: 16px;
-            padding: 12px 20px;
-            font-size: 13px;
-            font-weight: 800;
-        }
-        QPushButton:hover {
-            background: rgba(125, 211, 252, 0.10);
-            border: 1px solid rgba(125, 211, 252, 0.55);
-        }
-    """)
-    make_shadow(steal, blur=14, color=QColor(10, 132, 255, 100), y=5)
-
-    def update_steal_button_state():
-        locked_out_team = page.game_state.get("locked_out_team")
-        steal_used = page.game_state.get("steal_used", False)
-        can_steal = (locked_out_team in (0, 1)) and (not steal_used)
-        steal.setEnabled(can_steal)
-
-    def steal_from_bottom():
-        locked_out_team = page.game_state.get("locked_out_team")
-        if locked_out_team not in (0, 1):
-            QMessageBox.information(
-                page,
-                "Steal",
-                "Steal is only available after a team reaches 3 strikes."
-            )
-            return
-        steal_attempt(1 - locked_out_team)
-
-    steal.clicked.connect(steal_from_bottom)
-    update_steal_button_state()
-
-    # ----------------------------
     # Navigation row
     # ----------------------------
     back_btn = QPushButton("Back to Board")
@@ -1449,9 +1416,8 @@ def open_play_game(app, title: str, description: str, load_db_first: bool = Fals
     top_actions.addWidget(back_btn)
     top_actions.addWidget(display_btn)
     top_actions.addWidget(next_btn)
-    top_actions.addWidget(steal)
     layout.addWidget(top)
-    layout.addWidget(cheat_sheet)
+    layout.addWidget(answering_bar)
 
     def _get_current_round_data():
         return page.game_state.get("current_round")
